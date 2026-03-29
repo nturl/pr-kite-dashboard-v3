@@ -1,0 +1,19 @@
+# deps
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# next
+/.next/
+/out/
+/build
+
+# env — NEVER commit your real key
+.env*.local
+.env
+
+# misc
+.DS_Store
+*.pem
+/coverage
