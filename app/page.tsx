@@ -12,6 +12,7 @@ import { SpotVerdict, RegionalSummary } from "@/lib/gemini";
 const KiteMap = dynamic(() => import("@/components/KiteMap"), { ssr: false });
 
 const REFRESH_MS = 5 * 60 * 1000;
+const STALE_MS   = 15 * 60 * 1000; // if the data is older than this, don't claim "LIVE"
 const REGIONS    = ["All", "North", "East", "South", "West"] as const;
 const TYPES      = ["All", "Kite Spots", "Airports", "Buoys"] as const;
 
@@ -24,16 +25,19 @@ const REGION_COLORS: Record<string, string> = {
 
 // ── Header ────────────────────────────────────────────────────────────────
 function Header({
-  lastUpdated, loading, onRefresh,
+  lastUpdated, loading, stale, onRefresh,
   onOpenProfile, userProfile, aiLoading,
 }: {
   lastUpdated?: string;
   loading: boolean;
+  stale: boolean;
   onRefresh: () => void;
   onOpenProfile: () => void;
   userProfile?: UserProfile;
   aiLoading: boolean;
 }) {
+  const statusColor = loading ? "#ff8c42" : stale ? "#ff4757" : "#b6ff4a";
+  const statusLabel = loading ? "UPDATING" : stale ? "STALE" : "LIVE";
   return (
     <header style={{
       display:        "flex",
@@ -80,15 +84,15 @@ function Header({
             <span style={{ fontSize: 9, color: "rgba(182,255,74,0.6)", letterSpacing: "0.1em", fontWeight: 600 }}>GEMINI THINKING</span>
           </div>
         )}
-        <div style={{ width: 6, height: 6, borderRadius: "50%", background: loading ? "#ff8c42" : "#b6ff4a", boxShadow: `0 0 7px ${loading ? "#ff8c42" : "#b6ff4a"}` }} />
+        <div style={{ width: 6, height: 6, borderRadius: "50%", background: statusColor, boxShadow: `0 0 7px ${statusColor}` }} />
         <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: 600, letterSpacing: "0.1em" }}>
-          {loading ? "UPDATING" : "LIVE"}
+          {statusLabel}
         </span>
       </div>
 
       {/* Actions */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        {lastUpdated && <span style={{ fontSize: 10, color: "rgba(255,255,255,0.25)" }}>{lastUpdated}</span>}
+        {lastUpdated && <span style={{ fontSize: 10, color: "rgba(255,255,255,0.25)" }}>as of {lastUpdated}</span>}
         <button onClick={onOpenProfile} style={{
           background:   userProfile ? "rgba(182,255,74,0.08)" : "rgba(255,255,255,0.04)",
           border:       `1px solid ${userProfile ? "rgba(182,255,74,0.2)" : "rgba(255,255,255,0.1)"}`,
@@ -274,6 +278,7 @@ export default function App() {
   const [error, setError]             = useState<string | null>(null);
   const [selectedId, setSelectedId]   = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | undefined>();
+  const [dataTime, setDataTime]       = useState<Date | undefined>();
   const [region, setRegion]           = useState<string>("All");
   const [typeFilter, setTypeFilter]   = useState<string>("All");
 
@@ -308,7 +313,12 @@ export default function App() {
       if (!res.ok) throw new Error(`Server error ${res.status}`);
       const data = await res.json() as SpotWithWind[];
       setSpots(data);
-      setLastUpdated(new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }));
+      // Timestamp the data by when the SERVER actually fetched upstream (X-Fetched-At),
+      // not "now" — otherwise the badge claims LIVE even over a frozen response.
+      const fetchedHeader = res.headers.get("X-Fetched-At");
+      const fetchedAt = fetchedHeader ? new Date(fetchedHeader) : new Date();
+      setDataTime(fetchedAt);
+      setLastUpdated(fetchedAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }));
       return data;
     } catch (err) {
       setError((err as Error).message);
@@ -359,11 +369,14 @@ export default function App() {
 
   const selectedSpot = spots.find((s) => s.id === selectedId);
 
+  const stale = dataTime ? Date.now() - dataTime.getTime() > STALE_MS : false;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", background: "#050a14" }}>
       <Header
         lastUpdated={lastUpdated}
         loading={loading}
+        stale={stale}
         onRefresh={() => fetchSpots().then((d) => { if (d) fetchAI(d); })}
         onOpenProfile={() => setProfileOpen(true)}
         userProfile={userProfile}
