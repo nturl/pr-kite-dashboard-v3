@@ -1,13 +1,25 @@
 import axios from "axios";
 import { Spot, SpotWithWind, WindData } from "./spots";
 
-const MS_TO_KTS = 1.94384;
-const NOAA_UA   = "KitePR-Dashboard/3.0 (kitesurfing wind tracker)";
+const MS_TO_KTS  = 1.94384;
+const KMH_TO_KTS = 0.539957; // 1 / 1.852
+const NOAA_UA    = "KitePR-Dashboard/3.0 (kitesurfing wind tracker)";
 
 export function degToCompass(deg: number | null): string | null {
   if (deg == null) return null;
   const dirs = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
   return dirs[Math.round(deg / 22.5) % 16];
+}
+
+// api.weather.gov reports wind speed in km/h (unitCode "wmoUnit:km_h-1") for
+// virtually every station today; a handful of legacy stations still report m/s.
+// Convert off the unitCode so we never mistake one for the other — assuming m/s
+// here is what showed SJU at 76 kts instead of 21. Default to km/h, the current
+// NWS default, when the unitCode is absent.
+function nwsSpeedToKnots(value: number | null | undefined, unitCode?: string): number | null {
+  if (value == null) return null;
+  const kts = unitCode?.includes("m_s") ? value * MS_TO_KTS : value * KMH_TO_KTS;
+  return parseFloat(kts.toFixed(1));
 }
 
 // ── NOAA airport observations ────────────────────────────────────────────
@@ -18,12 +30,10 @@ export async function fetchNOAA(stationId: string): Promise<WindData | null> {
   );
   const p = res.data?.properties;
   if (!p) return null;
-  const mps     = p.windSpeed?.value   as number | null;
-  const gustMps = p.windGust?.value    as number | null;
-  const dirDeg  = p.windDirection?.value as number | null;
+  const dirDeg = p.windDirection?.value as number | null;
   return {
-    avg:           mps     != null ? parseFloat((mps * MS_TO_KTS).toFixed(1))     : null,
-    gust:          gustMps != null ? parseFloat((gustMps * MS_TO_KTS).toFixed(1)) : null,
+    avg:           nwsSpeedToKnots(p.windSpeed?.value, p.windSpeed?.unitCode),
+    gust:          nwsSpeedToKnots(p.windGust?.value, p.windGust?.unitCode),
     direction:     dirDeg,
     directionText: degToCompass(dirDeg),
     timestamp:     p.timestamp ?? null,
