@@ -32,7 +32,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           crossOrigin=""
         />
       </head>
-      <body className="h-screen overflow-hidden antialiased">{children}</body>
+      <body className="h-screen overflow-hidden antialiased">
+        {children}
+        {/* Pulse: Noel's own first-party analytics. */}
+        <script defer data-site="kite" src="https://pulse-nturls-projects.vercel.app/p.js" />
+      </body>
     </html>
   );
 }
