@@ -1,5 +1,5 @@
 export type SpotType = "kite" | "airport" | "buoy";
-export type Region   = "North" | "East" | "South" | "West";
+export type Region   = "NC" | "NY" | "NJ";
 
 export interface Spot {
   id:       string;
@@ -19,9 +19,16 @@ export interface WindData {
   direction:     number | null;
   directionText: string | null;
   timestamp:     string | null;
-  source:        "noaa" | "ndbc" | "open-meteo";
+  source:        "noaa" | "ndbc" | "hrrr" | "open-meteo";
   isGustOnly?:   boolean;
   waveHeight?:   number | null;
+  // Live-vs-model gap: for modeled (HRRR) kite spots we also fetch the coarse
+  // global model (ECMWF ~25 km — what Windy shows by default) so the UI can
+  // surface how much wind the global model is under-calling. This is the whole
+  // reason the tracker exists: HRRR resolves the coastal sea breeze that the
+  // global models smear out.
+  globalAvg?:    number | null; // ECMWF global wind at the same point (kts)
+  modelGap?:     number | null; // hrrr avg − global avg (kts); positive = globals under-calling
 }
 
 export interface SpotWithWind extends Spot {
@@ -43,32 +50,26 @@ export interface ForecastDay {
   direction: number | null;
 }
 
-export const PR_SPOTS: Spot[] = [
-  // ── Kite spots ──────────────────────────────────────────────────────────
-  { id: "ocean-park",  name: "Ocean Park",  location: "San Juan",  lat: 18.45444, lon: -66.05504, region: "North", type: "kite" },
-  { id: "shacks",      name: "Shacks",      location: "Aguadilla", lat: 18.50258, lon: -67.12644, region: "North", type: "kite" },
-  { id: "las-picuas",  name: "Las Picuas",  location: "Río Mar",   lat: 18.4124,  lon: -65.7704,  region: "East",  type: "kite" },
-  { id: "luquillo",    name: "Luquillo",    location: "Luquillo",  lat: 18.3865,  lon: -65.7289,  region: "East",  type: "kite" },
-  { id: "dakiti",      name: "Dakiti",      location: "Culebra",   lat: 18.2924,  lon: -65.2791,  region: "East",  type: "kite" },
-  { id: "ponce-kite",  name: "Ponce",       location: "Ponce",     lat: 18.01,    lon: -66.61,    region: "South", type: "kite" },
-  { id: "pozuelo",     name: "Pozuelo",     location: "Guayama",   lat: 17.933,   lon: -66.1973,  region: "South", type: "kite" },
-  { id: "la-parguera", name: "La Parguera", location: "Lajas",     lat: 17.9693,  lon: -67.0296,  region: "South", type: "kite" },
-  { id: "boqueron",    name: "Boquerón",    location: "Cabo Rojo", lat: 18.0276,  lon: -67.1694,  region: "West",  type: "kite" },
-  { id: "isabela",     name: "Isabela",     location: "Isabela",   lat: 18.5142,  lon: -67.0544,  region: "West",  type: "kite" },
+export const SPOTS: Spot[] = [
+  // ── NC — Topsail (home spot) ────────────────────────────────────────────
+  // No wind sensor sits at Topsail itself; the nearest reporting stations are
+  // the Wrightsville Beach cluster ~25–28 mi SW, so those are the live
+  // ground-truth references for the home spot.
+  { id: "topsail",  name: "Topsail Beach",         location: "Topsail Island, NC", lat: 34.371,  lon: -77.630,  region: "NC", type: "kite" },
+  { id: "jmpn7",    name: "Mercer's Pier",         location: "Wrightsville, NC",   lat: 34.213,  lon: -77.786,  region: "NC", type: "buoy",    buoy: "JMPN7" },
+  { id: "41038",    name: "Wrightsville Nearshore",location: "Nearshore, NC",      lat: 34.141,  lon: -77.715,  region: "NC", type: "buoy",    buoy: "41038" },
+  { id: "41037",    name: "Wrightsville Offshore", location: "Offshore, NC",       lat: 33.988,  lon: -77.362,  region: "NC", type: "buoy",    buoy: "41037" },
+  { id: "kilm",     name: "ILM – Wilmington",      location: "Wilmington, NC",     lat: 34.2668, lon: -77.8999, region: "NC", type: "airport", noaa: "KILM" },
 
-  // ── Ocean buoys (NDBC) ──────────────────────────────────────────────────
-  { id: "buoy-north",   name: "Buoy – North PR",      location: "North offshore", lat: 18.474, lon: -66.099, region: "North", type: "buoy", buoy: "41053" },
-  { id: "buoy-vieques", name: "Buoy – Vieques Sound", location: "East offshore",  lat: 18.261, lon: -65.464, region: "East",  type: "buoy", buoy: "41056" },
-  { id: "buoy-east",    name: "Buoy – East PR",       location: "SE offshore",    lat: 18.249, lon: -64.763, region: "East",  type: "buoy", buoy: "41052" },
-  { id: "buoy-south",   name: "Buoy – South PR",      location: "South offshore", lat: 17.870, lon: -66.537, region: "South", type: "buoy", buoy: "42085" },
+  // ── NY — Brooklyn / Queens / Long Island ────────────────────────────────
+  { id: "plumb-beach",  name: "Plumb Beach",   location: "Brooklyn, NY",       lat: 40.5847, lon: -73.9207, region: "NY", type: "kite" },
+  { id: "breezy-point", name: "Breezy Point",  location: "Queens, NY",         lat: 40.5546, lon: -73.9293, region: "NY", type: "kite" },
+  { id: "far-rockaway", name: "Far Rockaway",  location: "Queens, NY",         lat: 40.6000, lon: -73.7510, region: "NY", type: "kite" },
+  { id: "oak-beach",    name: "Oak Beach",     location: "Great South Bay, NY",lat: 40.6386, lon: -73.2887, region: "NY", type: "kite" },
+  { id: "44065",        name: "NY Harbor Entrance", location: "NY Harbor, NY", lat: 40.368,  lon: -73.701,  region: "NY", type: "buoy",    buoy: "44065" },
+  { id: "kjfk",         name: "JFK",           location: "Queens, NY",         lat: 40.6392, lon: -73.7639, region: "NY", type: "airport", noaa: "KJFK" },
 
-  // ── Airports (NOAA) ─────────────────────────────────────────────────────
-  { id: "tjsj", name: "SJU – Muñoz Marín", location: "San Juan",  lat: 18.4394, lon: -66.0018, region: "North", type: "airport", noaa: "TJSJ" },
-  { id: "tjig", name: "SIG – Isla Grande",  location: "San Juan",  lat: 18.4568, lon: -66.0981, region: "North", type: "airport", noaa: "TJIG" },
-  { id: "tjbq", name: "BQN – Aguadilla",    location: "Aguadilla", lat: 18.4948, lon: -67.1294, region: "North", type: "airport", noaa: "TJBQ" },
-  { id: "tjmz", name: "MAZ – Mayagüez",     location: "Mayagüez",  lat: 18.2556, lon: -67.1485, region: "West",  type: "airport", noaa: "TJMZ" },
-  { id: "tjps", name: "PSE – Ponce",        location: "Ponce",     lat: 18.0083, lon: -66.5630, region: "South", type: "airport", noaa: "TJPS" },
-  { id: "tjrv", name: "NRR – Ceiba",        location: "Ceiba",     lat: 18.2453, lon: -65.6434, region: "East",  type: "airport", noaa: "TJRV" },
-  { id: "tjvq", name: "VQS – Vieques",      location: "Vieques",   lat: 18.1158, lon: -65.4936, region: "East",  type: "airport", noaa: "TJVQ" },
-  { id: "tjcp", name: "CPX – Culebra",      location: "Culebra",   lat: 18.3127, lon: -65.3034, region: "East",  type: "airport", noaa: "TJCP" },
+  // ── NJ — Sandy Hook ─────────────────────────────────────────────────────
+  { id: "sandy-hook", name: "Sandy Hook",         location: "Gateway NRA, NJ", lat: 40.4350, lon: -73.9900, region: "NJ", type: "kite" },
+  { id: "sdhn4",      name: "Sandy Hook Station",  location: "Sandy Hook, NJ",  lat: 40.467,  lon: -74.009,  region: "NJ", type: "buoy", buoy: "SDHN4" },
 ];

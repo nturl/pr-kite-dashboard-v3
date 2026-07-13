@@ -13,14 +13,13 @@ const KiteMap = dynamic(() => import("@/components/KiteMap"), { ssr: false });
 
 const REFRESH_MS = 5 * 60 * 1000;
 const STALE_MS   = 15 * 60 * 1000; // if the data is older than this, don't claim "LIVE"
-const REGIONS    = ["All", "North", "East", "South", "West"] as const;
+const REGIONS    = ["All", "NC", "NY", "NJ"] as const;
 const TYPES      = ["All", "Kite Spots", "Airports", "Buoys"] as const;
 
 const REGION_COLORS: Record<string, string> = {
-  North: "#00e5ff",
-  East:  "#b6ff4a",
-  South: "#ff8c42",
-  West:  "#c084fc",
+  NC: "#00e5ff",
+  NY: "#b6ff4a",
+  NJ: "#ff8c42",
 };
 
 // ── Header ────────────────────────────────────────────────────────────────
@@ -69,9 +68,9 @@ function Header({
             WebkitBackgroundClip:  "text",
             WebkitTextFillColor:   "transparent",
             letterSpacing:         "-0.02em",
-          }}>KITE PR</div>
+          }}>KITE SPOTS</div>
           <div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", letterSpacing: "0.16em", marginTop: -1 }}>
-            V3 · GEMINI POWERED
+            NC · NY · NJ
           </div>
         </div>
       </div>
@@ -426,7 +425,7 @@ export default function App() {
 
             <div style={{ paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
               <div style={{ fontSize: 9, color: "rgba(255,255,255,0.2)", lineHeight: 2 }}>
-                NOAA airports · NDBC buoys · Open-Meteo<br />
+                NOAA HRRR · NDBC buoys · airports<br />
                 AI analysis by Gemini 2.0 Flash<br />
                 Refreshes every 5 min
               </div>
@@ -455,7 +454,7 @@ export default function App() {
               gap:            12,
             }}>
               <div style={{ fontSize: 42, opacity: 0.1 }}>🪁</div>
-              <div style={{ color: "rgba(255,255,255,0.2)", fontSize: 13 }}>Loading PR spots...</div>
+              <div style={{ color: "rgba(255,255,255,0.2)", fontSize: 13 }}>Loading spots...</div>
             </div>
           )}
 

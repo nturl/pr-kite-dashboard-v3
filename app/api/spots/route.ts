@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PR_SPOTS } from "@/lib/spots";
+import { SPOTS } from "@/lib/spots";
 import { fetchSpot, fetchOpenMeteoBatch } from "@/lib/wind";
 
 // Force per-request execution. Without this, Next.js statically prerenders this
@@ -28,8 +28,8 @@ export async function GET() {
     return windJson(cache.data, true, cache.ts);
   }
 
-  const stationSpots = PR_SPOTS.filter((s) => s.noaa || s.buoy);
-  const omSpots      = PR_SPOTS.filter((s) => !s.noaa && !s.buoy);
+  const stationSpots = SPOTS.filter((s) => s.noaa || s.buoy);
+  const omSpots      = SPOTS.filter((s) => !s.noaa && !s.buoy);
 
   const stationResults = await Promise.all(stationSpots.map(fetchSpot));
 
@@ -44,7 +44,7 @@ export async function GET() {
   }
 
   const byId  = new Map([...stationResults, ...omResults].map((r) => [r.id, r]));
-  const results = PR_SPOTS.map((s) => byId.get(s.id) ?? { ...s, wind: null });
+  const results = SPOTS.map((s) => byId.get(s.id) ?? { ...s, wind: null });
 
   cache = { data: results, ts: Date.now() };
   return windJson(results, false, cache.ts);

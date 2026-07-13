@@ -70,14 +70,18 @@ export async function fetchNDBC(stationId: string): Promise<WindData | null> {
   };
 }
 
-// ── Open-Meteo single spot ───────────────────────────────────────────────
+// ── Open-Meteo single spot (HRRR) ────────────────────────────────────────
+// Used as the fallback when a spot's own station is unreachable. Pinned to
+// NOAA HRRR (3 km) so coastal points get the high-res sea-breeze reading
+// rather than a coarse global that flattens it.
 export async function fetchOpenMeteo(lat: number, lon: number): Promise<WindData | null> {
   const res = await axios.get("https://api.open-meteo.com/v1/forecast", {
     params: {
       latitude: lat, longitude: lon,
       current: "wind_speed_10m,wind_direction_10m,wind_gusts_10m",
       wind_speed_unit: "kn",
-      timezone: "America/Puerto_Rico",
+      timezone: "America/New_York",
+      models: "gfs_hrrr",
     },
     timeout: 10000,
   });
@@ -89,38 +93,81 @@ export async function fetchOpenMeteo(lat: number, lon: number): Promise<WindData
     direction:     c.wind_direction_10m ?? null,
     directionText: degToCompass(c.wind_direction_10m),
     timestamp:     c.time,
-    source:        "open-meteo",
+    source:        "hrrr",
     isGustOnly:    false,
   };
 }
 
 // ── Open-Meteo batch (many spots in ONE request) ─────────────────────────
+// Fetches TWO models per spot: gfs_hrrr (NOAA HRRR, 3 km — the trusted high-res
+// reading that resolves the coastal sea breeze) and ecmwf_ifs025 (~25 km global,
+// what Windy shows by default). Open-Meteo collapses a multi-model `current`
+// request down to a single model, so we request them in separate calls and diff
+// them — that gap is the headline the tracker exists to surface.
+const asItems = (data: unknown): Record<string, unknown>[] =>
+  (Array.isArray(data) ? data : [data]) as Record<string, unknown>[];
+const currentOf = (item: Record<string, unknown> | undefined) =>
+  (item?.current as Record<string, number> | null | undefined) ?? null;
+
 export async function fetchOpenMeteoBatch(spots: Spot[]): Promise<(WindData | null)[]> {
   if (!spots.length) return [];
-  const res = await axios.get("https://api.open-meteo.com/v1/forecast", {
-    params: {
-      latitude:  spots.map((s) => s.lat).join(","),
-      longitude: spots.map((s) => s.lon).join(","),
-      current:   "wind_speed_10m,wind_direction_10m,wind_gusts_10m",
-      wind_speed_unit: "kn",
-      timezone:  "America/Puerto_Rico",
-    },
-    timeout: 15000,
+
+  const baseParams = {
+    latitude:  spots.map((s) => s.lat).join(","),
+    longitude: spots.map((s) => s.lon).join(","),
+    current:   "wind_speed_10m,wind_direction_10m,wind_gusts_10m",
+    wind_speed_unit: "kn",
+    timezone:  "America/New_York",
+  };
+  const get = (model?: string) =>
+    axios.get("https://api.open-meteo.com/v1/forecast", {
+      params: model ? { ...baseParams, models: model } : baseParams,
+      timeout: 15000,
+    });
+
+  // Primary reading = HRRR. If HRRR is unreachable, fall back to Open-Meteo's
+  // best_match so spots still show a number (no gap in that case).
+  let hrrrItems: Record<string, unknown>[];
+  try {
+    hrrrItems = asItems((await get("gfs_hrrr")).data);
+  } catch (err) {
+    console.error("Open-Meteo HRRR batch error, falling back to best_match:", (err as Error).message);
+    const bm = asItems((await get()).data);
+    return spots.map((_, i) => toWind(currentOf(bm[i]), "open-meteo"));
+  }
+
+  // Global model is best-effort — its only job is the gap annotation.
+  let ecmwfItems: Record<string, unknown>[] = [];
+  try {
+    ecmwfItems = asItems((await get("ecmwf_ifs025")).data);
+  } catch (err) {
+    console.error("Open-Meteo ECMWF batch error (gap unavailable):", (err as Error).message);
+  }
+
+  return spots.map((_, i) => {
+    const wind = toWind(currentOf(hrrrItems[i]), "hrrr");
+    if (!wind) return null;
+    const g = currentOf(ecmwfItems[i]);
+    const globalAvg = g?.wind_speed_10m != null ? parseFloat(g.wind_speed_10m.toFixed(1)) : null;
+    wind.globalAvg = globalAvg;
+    wind.modelGap  = wind.avg != null && globalAvg != null
+      ? parseFloat((wind.avg - globalAvg).toFixed(1))
+      : null;
+    return wind;
   });
-  const items: Record<string, unknown>[] = Array.isArray(res.data) ? res.data : [res.data];
-  return items.map((r) => {
-    const c = r?.current as Record<string, number> | null;
-    if (!c) return null;
-    return {
-      avg:           c.wind_speed_10m   != null ? parseFloat(c.wind_speed_10m.toFixed(1))   : null,
-      gust:          c.wind_gusts_10m  != null ? parseFloat(c.wind_gusts_10m.toFixed(1))  : null,
-      direction:     c.wind_direction_10m ?? null,
-      directionText: degToCompass(c.wind_direction_10m ?? null),
-      timestamp:     (r.current as Record<string, string>)?.time ?? null,
-      source:        "open-meteo" as const,
-      isGustOnly:    false,
-    };
-  });
+}
+
+function toWind(c: Record<string, number> | null, source: WindData["source"]): WindData | null {
+  if (!c) return null;
+  return {
+    avg:           c.wind_speed_10m     != null ? parseFloat(c.wind_speed_10m.toFixed(1))  : null,
+    gust:          c.wind_gusts_10m     != null ? parseFloat(c.wind_gusts_10m.toFixed(1))  : null,
+    direction:     c.wind_direction_10m ?? null,
+    directionText: degToCompass(c.wind_direction_10m ?? null),
+    timestamp:     (c as Record<string, unknown>).time as string ?? null,
+    source,
+    isGustOnly:    false,
+  };
 }
 
 // ── Fetch a single spot ──────────────────────────────────────────────────
@@ -149,7 +196,7 @@ export async function getForecast(lat: number, lon: number) {
       hourly: "wind_speed_10m,wind_direction_10m,wind_gusts_10m",
       daily:  "wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant",
       wind_speed_unit: "kn",
-      timezone: "America/Puerto_Rico",
+      timezone: "America/New_York",
       forecast_days: 7,
     },
     timeout: 15000,

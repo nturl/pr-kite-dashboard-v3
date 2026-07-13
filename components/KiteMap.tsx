@@ -14,6 +14,7 @@ export default function KiteMap({ spots, selectedId, onSpotSelect }: Props) {
   const mapRef       = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<unknown>(null);
   const markersRef   = useRef<Map<string, unknown>>(new Map());
+  const resizeObsRef = useRef<ResizeObserver | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined" || !mapRef.current || mapInstanceRef.current) return;
@@ -23,10 +24,11 @@ export default function KiteMap({ spots, selectedId, onSpotSelect }: Props) {
       if (!mapRef.current || mapInstanceRef.current) return;
 
       const map = L.map(mapRef.current, {
-        center:    [18.2, -66.5],
-        zoom:      9,
+        center:    [38.5, -75.0], // mid-Atlantic placeholder; fitBounds below frames the actual spots
+        zoom:      6,
         zoomControl: false,
         attributionControl: false,
+        fadeAnimation: false, // render tiles at full opacity immediately; the fade left tiles stuck faint when the container settled/re-fit
       });
 
       L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
@@ -76,9 +78,33 @@ export default function KiteMap({ spots, selectedId, onSpotSelect }: Props) {
 
         markersRef.current.set(spot.id, marker);
       });
+
+      // Frame the map to the spots (they span NC to Long Island, so a fixed
+      // center/zoom won't do). In this flex layout the container reaches its
+      // final size a few frames after the async Leaflet import resolves, so we
+      // fit only once the size has SETTLED: a debounced ResizeObserver waits for
+      // the size to stop changing, fits, then disconnects. Fitting repeatedly
+      // (e.g. once per animation frame) restarts Leaflet's tile fade-in every
+      // time and leaves the whole map stuck at partial opacity.
+      const bounds = L.latLngBounds(spots.map((s) => [s.lat, s.lon] as [number, number]));
+      let settleTimer = 0;
+      const ro = new ResizeObserver(() => {
+        clearTimeout(settleTimer);
+        settleTimer = window.setTimeout(() => {
+          if (mapInstanceRef.current !== map) return; // unmounted
+          ro.disconnect();
+          resizeObsRef.current = null;
+          map.invalidateSize({ animate: false });
+          if (spots.length) map.fitBounds(bounds, { padding: [40, 40], maxZoom: 11, animate: false });
+        }, 250);
+      });
+      ro.observe(mapRef.current!);
+      resizeObsRef.current = ro;
     });
 
     return () => {
+      resizeObsRef.current?.disconnect();
+      resizeObsRef.current = null;
       if (mapInstanceRef.current) {
         (mapInstanceRef.current as L.Map).remove();
         mapInstanceRef.current = null;
@@ -122,7 +148,7 @@ export default function KiteMap({ spots, selectedId, onSpotSelect }: Props) {
   }, [spots, selectedId]);
 
   return (
-    <div ref={mapRef} style={{ width: "100%", height: "100%", background: "#0d1525" }}>
+    <div ref={mapRef} style={{ position: "absolute", inset: 0, background: "#0d1525" }}>
       <style>{`
         .kite-tooltip {
           background: rgba(5,10,20,0.95) !important;

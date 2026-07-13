@@ -35,7 +35,7 @@ export default function HourlyForecast({ lat, lon }: Props) {
           const color = getWindColor(val);
           const barH  = Math.max((val / maxVal) * 48, 2);
           const gustH = Math.max((gust / maxVal) * 48, 2);
-          const hour  = new Date(h.time).toLocaleTimeString("en-US", { hour: "numeric", hour12: true, timeZone: "America/Puerto_Rico" });
+          const hour  = new Date(h.time).toLocaleTimeString("en-US", { hour: "numeric", hour12: true, timeZone: "America/New_York" });
 
           return (
             <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, width: 30 }}>

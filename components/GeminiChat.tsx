@@ -11,9 +11,9 @@ interface Props {
 
 const SUGGESTIONS = [
   "Best spot to kite right now?",
-  "Where are the trades strongest today?",
-  "Is it worth driving to Shacks?",
-  "What's the wind like on the East side?",
+  "Is the sea breeze up at Topsail?",
+  "Where's it windiest — NC, NY, or NJ?",
+  "Is Sandy Hook worth the drive today?",
 ];
 
 export default function GeminiChat({ spots, userProfile }: Props) {
@@ -136,7 +136,7 @@ export default function GeminiChat({ spots, userProfile }: Props) {
                 Ask Gemini
               </div>
               <div style={{ fontSize: 10, color: "rgba(0,229,255,0.5)", letterSpacing: "0.08em" }}>
-                {hasKey === false ? "⚠ API key needed" : "PR conditions loaded"}
+                {hasKey === false ? "⚠ API key needed" : "conditions loaded"}
               </div>
             </div>
             {messages.length > 0 && (

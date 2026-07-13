@@ -17,10 +17,9 @@ interface Props {
 }
 
 const REGION_COLORS: Record<string, string> = {
-  North: "#00e5ff",
-  East:  "#b6ff4a",
-  South: "#ff8c42",
-  West:  "#c084fc",
+  NC: "#00e5ff",
+  NY: "#b6ff4a",
+  NJ: "#ff8c42",
 };
 
 export default function SpotCard({ spot, selected, onClick, verdict, userProfile }: Props) {
@@ -118,9 +117,13 @@ export default function SpotCard({ spot, selected, onClick, verdict, userProfile
                 fontSize: 9, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase",
                 color: wind.source === "noaa" ? "rgba(192,132,252,0.6)" :
                        wind.source === "ndbc" ? "rgba(56,189,248,0.7)" :
+                       wind.source === "hrrr" ? "rgba(0,229,255,0.55)" :
                        "rgba(182,255,74,0.4)",
               }}>
-                {wind.source === "noaa" ? "NOAA" : wind.source === "ndbc" ? "NDBC Buoy" : "Open-Meteo"}
+                {wind.source === "noaa" ? "NOAA" :
+                 wind.source === "ndbc" ? "NDBC Buoy" :
+                 wind.source === "hrrr" ? "NOAA HRRR · 3km" :
+                 "Open-Meteo"}
               </div>
             )}
             {wind?.timestamp && (
@@ -136,6 +139,30 @@ export default function SpotCard({ spot, selected, onClick, verdict, userProfile
           </div>
         </div>
       </div>
+
+      {/* ── Live-vs-model gap (the headline: HRRR sees the sea breeze Windy misses) ── */}
+      {wind?.modelGap != null && wind.modelGap >= 5 && (
+        <div style={{
+          marginTop:    10,
+          padding:      "7px 11px",
+          background:   "rgba(0,229,255,0.06)",
+          border:       "1px solid rgba(0,229,255,0.22)",
+          borderRadius: 10,
+          display:      "flex",
+          alignItems:   "center",
+          gap:          8,
+        }}>
+          <span style={{ fontSize: 14 }}>🌊</span>
+          <span style={{ fontSize: 10, color: "#00e5ff", fontWeight: 600, lineHeight: 1.35 }}>
+            Sea breeze — global models under-calling by ~{Math.round(wind.modelGap)} kts
+            {wind.globalAvg != null && (
+              <span style={{ color: "rgba(255,255,255,0.4)", fontWeight: 400 }}>
+                {" "}· Windy-style global reads {Math.round(wind.globalAvg)}
+              </span>
+            )}
+          </span>
+        </div>
+      )}
 
       {/* ── Gemini verdict detail (when selected) ── */}
       {selected && verdict?.detail && (
@@ -241,6 +268,6 @@ function formatTime(ts: string): string {
   try {
     const d = new Date(ts.includes("T") || ts.includes(" ") ? ts : Number(ts) * 1000);
     if (isNaN(d.getTime())) return ts;
-    return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/Puerto_Rico" });
+    return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "America/New_York" });
   } catch { return ""; }
 }
