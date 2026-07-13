@@ -71,7 +71,7 @@ function Header({
             letterSpacing:         "-0.02em",
           }}>KITE SPOTS</div>
           <div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", letterSpacing: "0.16em", marginTop: -1 }}>
-            NC · NY · NJ
+            NC · NY · NJ · PR
           </div>
         </div>
       </div>

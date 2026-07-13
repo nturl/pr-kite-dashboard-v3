@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title:       "Noel's Kite Spots — NC · NY · NJ Wind Tracker",
-  description: "Live wind for my kite spots across North Carolina, New York & New Jersey — NOAA HRRR + buoys, showing the sea-breeze the global models miss.",
+  title:       "Noel's Kite Spots — NC · NY · NJ · PR Wind Tracker",
+  description: "Live wind for my kite spots across North Carolina, New York, New Jersey & Puerto Rico — NOAA HRRR + buoys, showing the sea-breeze the global models miss.",
   manifest:    "/manifest.json",
   appleWebApp: {
     capable:         true,
