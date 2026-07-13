@@ -116,18 +116,32 @@ export async function fetchOpenMeteoBatch(spots: Spot[]): Promise<(WindData | nu
   // HRRR only covers the continental US. Split the request: mainland spots get
   // HRRR (3 km) plus the coarse global model so we can surface the live-vs-model
   // gap; Puerto Rico spots (Caribbean, outside the HRRR domain) get Open-Meteo's
-  // best_match model with no gap.
+  // best_match model with no gap. Run via allSettled so a mainland HRRR outage
+  // (and its best_match fallback) can't null out PR's otherwise-healthy data,
+  // or vice versa — see notes/session-2026-07-12.md, Audit Finding 1.
   const mainland = spots.map((_, i) => i).filter((i) => spots[i].region !== "PR");
   const pr       = spots.map((_, i) => i).filter((i) => spots[i].region === "PR");
 
-  if (mainland.length) {
-    const winds = await fetchHrrrWithGap(mainland.map((i) => spots[i]));
-    mainland.forEach((i, k) => { out[i] = winds[k]; });
+  const mainlandPromise: Promise<(WindData | null)[]> = mainland.length
+    ? fetchHrrrWithGap(mainland.map((i) => spots[i]))
+    : Promise.resolve([]);
+  const prPromise: Promise<(WindData | null)[]> = pr.length
+    ? fetchBestMatchBatch(pr.map((i) => spots[i]))
+    : Promise.resolve([]);
+
+  const [mainlandResult, prResult] = await Promise.allSettled([mainlandPromise, prPromise]);
+
+  if (mainlandResult.status === "fulfilled") {
+    mainland.forEach((i, k) => { out[i] = mainlandResult.value[k]; });
+  } else {
+    console.error("Mainland Open-Meteo batch failed entirely:", (mainlandResult.reason as Error).message);
   }
-  if (pr.length) {
-    const winds = await fetchBestMatchBatch(pr.map((i) => spots[i]));
-    pr.forEach((i, k) => { out[i] = winds[k]; });
+  if (prResult.status === "fulfilled") {
+    pr.forEach((i, k) => { out[i] = prResult.value[k]; });
+  } else {
+    console.error("PR Open-Meteo batch failed entirely:", (prResult.reason as Error).message);
   }
+
   return out;
 }
 

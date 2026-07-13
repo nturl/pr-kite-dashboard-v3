@@ -102,14 +102,14 @@ export async function getRegionalSummaries(spots: SpotWithWind[]): Promise<Regio
     spots: rSpots.map((s) => ({ name: s.name, avg: s.wind?.avg, gust: s.wind?.gust, dir: s.wind?.directionText })),
   }));
 
-  const prompt = `You are a US East Coast kitesurfing forecaster. Summarize conditions by region (NC, NY, NJ).
+  const prompt = `You are a US East Coast kitesurfing forecaster. Summarize conditions by region (NC, NY, NJ, PR).
 
 Data: ${JSON.stringify(regionData, null, 2)}
 
 Return a JSON array:
 [
   {
-    "region": "<NC|NY|NJ>",
+    "region": "<NC|NY|NJ|PR>",
     "summary": "<2 sentences max — describe wind quality, best window, any trade pattern notes>",
     "bestSpot": "<name of best spot in this region right now>"
   }
@@ -146,7 +146,7 @@ export async function chat(
     ? `Rider profile: ${userProfile.heightCm}cm tall, ${userProfile.weightKg}kg.`
     : "";
 
-  const systemContext = `You are a knowledgeable kitesurfing assistant for Noel's kite spots across North Carolina (Topsail), New York (Brooklyn / Queens / Long Island), and New Jersey (Sandy Hook).
+  const systemContext = `You are a knowledgeable kitesurfing assistant for Noel's kite spots across North Carolina (Topsail), New York (Brooklyn / Queens / Long Island), New Jersey (Sandy Hook), and Puerto Rico (San Juan / Aguadilla / Culebra and more).
 You have real-time wind data for all of these spots. Readings sourced from NOAA HRRR (3 km high-res) and live NDBC buoys/airports; on hot afternoons trust the live obs and watch for onshore sea breezes the global models miss.
 ${profileNote}
 
@@ -164,7 +164,7 @@ If asked about a kite size, factor in the rider profile if provided.`;
       },
       {
         role: "model",
-        parts: [{ text: "Got it — I have the current conditions loaded for your NC, NY, and NJ spots. What would you like to know?" }],
+        parts: [{ text: "Got it — I have the current conditions loaded for your NC, NY, NJ, and PR spots. What would you like to know?" }],
       },
       ...messages.slice(0, -1).map((m) => ({
         role: m.role as "user" | "model",
