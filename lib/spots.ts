@@ -1,5 +1,5 @@
 export type SpotType = "kite" | "airport" | "buoy";
-export type Region   = "NC" | "NY" | "NJ";
+export type Region   = "NC" | "NY" | "NJ" | "PR";
 
 export interface Spot {
   id:       string;
@@ -72,4 +72,28 @@ export const SPOTS: Spot[] = [
   // ── NJ — Sandy Hook ─────────────────────────────────────────────────────
   { id: "sandy-hook", name: "Sandy Hook",         location: "Gateway NRA, NJ", lat: 40.4350, lon: -73.9900, region: "NJ", type: "kite" },
   { id: "sdhn4",      name: "Sandy Hook Station",  location: "Sandy Hook, NJ",  lat: 40.467,  lon: -74.009,  region: "NJ", type: "buoy", buoy: "SDHN4" },
+
+  // ── PR — Puerto Rico (the original spots) ───────────────────────────────
+  // HRRR doesn't reach the Caribbean, so PR kite spots use Open-Meteo's
+  // best_match model (no live-vs-model gap — the sea-breeze story is a US-coast
+  // thing); airports are live METAR. The 4 offshore NDBC buoys 41053/41056/
+  // 41052/42085 are all offline right now (last data 9–25 days old), so omitted.
+  { id: "ocean-park",  name: "Ocean Park",  location: "San Juan, PR",  lat: 18.45444, lon: -66.05504, region: "PR", type: "kite" },
+  { id: "shacks",      name: "Shacks",      location: "Aguadilla, PR", lat: 18.50258, lon: -67.12644, region: "PR", type: "kite" },
+  { id: "las-picuas",  name: "Las Picuas",  location: "Río Mar, PR",   lat: 18.4124,  lon: -65.7704,  region: "PR", type: "kite" },
+  { id: "luquillo",    name: "Luquillo",    location: "Luquillo, PR",  lat: 18.3865,  lon: -65.7289,  region: "PR", type: "kite" },
+  { id: "dakiti",      name: "Dakiti",      location: "Culebra, PR",   lat: 18.2924,  lon: -65.2791,  region: "PR", type: "kite" },
+  { id: "ponce-kite",  name: "Ponce",       location: "Ponce, PR",     lat: 18.01,    lon: -66.61,    region: "PR", type: "kite" },
+  { id: "pozuelo",     name: "Pozuelo",     location: "Guayama, PR",   lat: 17.933,   lon: -66.1973,  region: "PR", type: "kite" },
+  { id: "la-parguera", name: "La Parguera", location: "Lajas, PR",     lat: 17.9693,  lon: -67.0296,  region: "PR", type: "kite" },
+  { id: "boqueron",    name: "Boquerón",    location: "Cabo Rojo, PR", lat: 18.0276,  lon: -67.1694,  region: "PR", type: "kite" },
+  { id: "isabela",     name: "Isabela",     location: "Isabela, PR",   lat: 18.5142,  lon: -67.0544,  region: "PR", type: "kite" },
+  { id: "tjsj", name: "SJU – Muñoz Marín", location: "San Juan, PR",  lat: 18.4394, lon: -66.0018, region: "PR", type: "airport", noaa: "TJSJ" },
+  { id: "tjig", name: "SIG – Isla Grande", location: "San Juan, PR",  lat: 18.4568, lon: -66.0981, region: "PR", type: "airport", noaa: "TJIG" },
+  { id: "tjbq", name: "BQN – Aguadilla",   location: "Aguadilla, PR", lat: 18.4948, lon: -67.1294, region: "PR", type: "airport", noaa: "TJBQ" },
+  { id: "tjmz", name: "MAZ – Mayagüez",    location: "Mayagüez, PR",  lat: 18.2556, lon: -67.1485, region: "PR", type: "airport", noaa: "TJMZ" },
+  { id: "tjps", name: "PSE – Ponce",       location: "Ponce, PR",     lat: 18.0083, lon: -66.5630, region: "PR", type: "airport", noaa: "TJPS" },
+  { id: "tjrv", name: "NRR – Ceiba",       location: "Ceiba, PR",     lat: 18.2453, lon: -65.6434, region: "PR", type: "airport", noaa: "TJRV" },
+  { id: "tjvq", name: "VQS – Vieques",     location: "Vieques, PR",   lat: 18.1158, lon: -65.4936, region: "PR", type: "airport", noaa: "TJVQ" },
+  { id: "tjcp", name: "CPX – Culebra",     location: "Culebra, PR",   lat: 18.3127, lon: -65.3034, region: "PR", type: "airport", noaa: "TJCP" },
 ];

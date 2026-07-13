@@ -13,13 +13,14 @@ const KiteMap = dynamic(() => import("@/components/KiteMap"), { ssr: false });
 
 const REFRESH_MS = 5 * 60 * 1000;
 const STALE_MS   = 15 * 60 * 1000; // if the data is older than this, don't claim "LIVE"
-const REGIONS    = ["All", "NC", "NY", "NJ"] as const;
+const REGIONS    = ["All", "NC", "NY", "NJ", "PR"] as const;
 const TYPES      = ["All", "Kite Spots", "Airports", "Buoys"] as const;
 
 const REGION_COLORS: Record<string, string> = {
   NC: "#00e5ff",
   NY: "#b6ff4a",
   NJ: "#ff8c42",
+  PR: "#c084fc",
 };
 
 // ── Header ────────────────────────────────────────────────────────────────
@@ -440,6 +441,7 @@ export default function App() {
               spots={spots}
               selectedId={selectedId}
               onSpotSelect={(id) => setSelectedId(id === selectedId ? null : id)}
+              region={region}
             />
           )}
 

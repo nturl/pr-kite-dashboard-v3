@@ -8,9 +8,10 @@ interface Props {
   spots:          SpotWithWind[];
   selectedId:     string | null;
   onSpotSelect:   (id: string) => void;
+  region:         string;
 }
 
-export default function KiteMap({ spots, selectedId, onSpotSelect }: Props) {
+export default function KiteMap({ spots, selectedId, onSpotSelect, region }: Props) {
   const mapRef       = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<unknown>(null);
   const markersRef   = useRef<Map<string, unknown>>(new Map());
@@ -146,6 +147,23 @@ export default function KiteMap({ spots, selectedId, onSpotSelect }: Props) {
       });
     });
   }, [spots, selectedId]);
+
+  // Re-frame the map when the region filter changes. Spots span Puerto Rico to
+  // Long Island (~1500 mi), so fitting all of them at once is a very wide view;
+  // selecting a region zooms the map to just those spots. (Runs only on region
+  // change, not on the 5-min data refresh, so it never fights a user's pan/zoom.)
+  useEffect(() => {
+    const map = mapInstanceRef.current as L.Map | null;
+    if (!map) return; // not created yet — the initial ResizeObserver fit frames the first view
+    const framed = region === "All" ? spots : spots.filter((s) => s.region === region);
+    if (!framed.length) return;
+    import("leaflet").then((L) => {
+      const bounds = L.latLngBounds(framed.map((s) => [s.lat, s.lon] as [number, number]));
+      map.invalidateSize({ animate: false });
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 9, animate: false });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [region]);
 
   return (
     <div ref={mapRef} style={{ position: "absolute", inset: 0, background: "#0d1525" }}>

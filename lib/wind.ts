@@ -70,10 +70,10 @@ export async function fetchNDBC(stationId: string): Promise<WindData | null> {
   };
 }
 
-// ── Open-Meteo single spot (HRRR) ────────────────────────────────────────
-// Used as the fallback when a spot's own station is unreachable. Pinned to
-// NOAA HRRR (3 km) so coastal points get the high-res sea-breeze reading
-// rather than a coarse global that flattens it.
+// ── Open-Meteo single spot ───────────────────────────────────────────────
+// Fallback when a spot's own station is unreachable. Uses best_match so it
+// works everywhere — Open-Meteo auto-picks HRRR for US-coast points and a
+// covering global model for Puerto Rico (which HRRR doesn't reach).
 export async function fetchOpenMeteo(lat: number, lon: number): Promise<WindData | null> {
   const res = await axios.get("https://api.open-meteo.com/v1/forecast", {
     params: {
@@ -81,7 +81,6 @@ export async function fetchOpenMeteo(lat: number, lon: number): Promise<WindData
       current: "wind_speed_10m,wind_direction_10m,wind_gusts_10m",
       wind_speed_unit: "kn",
       timezone: "America/New_York",
-      models: "gfs_hrrr",
     },
     timeout: 10000,
   });
@@ -93,40 +92,61 @@ export async function fetchOpenMeteo(lat: number, lon: number): Promise<WindData
     direction:     c.wind_direction_10m ?? null,
     directionText: degToCompass(c.wind_direction_10m),
     timestamp:     c.time,
-    source:        "hrrr",
+    source:        "open-meteo",
     isGustOnly:    false,
   };
 }
 
-// ── Open-Meteo batch (many spots in ONE request) ─────────────────────────
-// Fetches TWO models per spot: gfs_hrrr (NOAA HRRR, 3 km — the trusted high-res
-// reading that resolves the coastal sea breeze) and ecmwf_ifs025 (~25 km global,
-// what Windy shows by default). Open-Meteo collapses a multi-model `current`
-// request down to a single model, so we request them in separate calls and diff
-// them — that gap is the headline the tracker exists to surface.
+// ── Open-Meteo batch (many spots per request) ────────────────────────────
 const asItems = (data: unknown): Record<string, unknown>[] =>
   (Array.isArray(data) ? data : [data]) as Record<string, unknown>[];
 const currentOf = (item: Record<string, unknown> | undefined) =>
   (item?.current as Record<string, number> | null | undefined) ?? null;
 
+const OM_BASE = {
+  current: "wind_speed_10m,wind_direction_10m,wind_gusts_10m",
+  wind_speed_unit: "kn",
+  timezone: "America/New_York",
+};
+
 export async function fetchOpenMeteoBatch(spots: Spot[]): Promise<(WindData | null)[]> {
   if (!spots.length) return [];
+  const out: (WindData | null)[] = new Array(spots.length).fill(null);
 
-  const baseParams = {
-    latitude:  spots.map((s) => s.lat).join(","),
-    longitude: spots.map((s) => s.lon).join(","),
-    current:   "wind_speed_10m,wind_direction_10m,wind_gusts_10m",
-    wind_speed_unit: "kn",
-    timezone:  "America/New_York",
-  };
+  // HRRR only covers the continental US. Split the request: mainland spots get
+  // HRRR (3 km) plus the coarse global model so we can surface the live-vs-model
+  // gap; Puerto Rico spots (Caribbean, outside the HRRR domain) get Open-Meteo's
+  // best_match model with no gap.
+  const mainland = spots.map((_, i) => i).filter((i) => spots[i].region !== "PR");
+  const pr       = spots.map((_, i) => i).filter((i) => spots[i].region === "PR");
+
+  if (mainland.length) {
+    const winds = await fetchHrrrWithGap(mainland.map((i) => spots[i]));
+    mainland.forEach((i, k) => { out[i] = winds[k]; });
+  }
+  if (pr.length) {
+    const winds = await fetchBestMatchBatch(pr.map((i) => spots[i]));
+    pr.forEach((i, k) => { out[i] = winds[k]; });
+  }
+  return out;
+}
+
+// Mainland: gfs_hrrr (trusted high-res) primary + ecmwf_ifs025 (~25 km global,
+// what Windy shows by default). Open-Meteo collapses a multi-model `current`
+// request to one model, so we call each separately and diff them — that gap is
+// the headline the tracker exists to surface.
+async function fetchHrrrWithGap(spots: Spot[]): Promise<(WindData | null)[]> {
   const get = (model?: string) =>
     axios.get("https://api.open-meteo.com/v1/forecast", {
-      params: model ? { ...baseParams, models: model } : baseParams,
+      params: {
+        ...OM_BASE,
+        latitude:  spots.map((s) => s.lat).join(","),
+        longitude: spots.map((s) => s.lon).join(","),
+        ...(model ? { models: model } : {}),
+      },
       timeout: 15000,
     });
 
-  // Primary reading = HRRR. If HRRR is unreachable, fall back to Open-Meteo's
-  // best_match so spots still show a number (no gap in that case).
   let hrrrItems: Record<string, unknown>[];
   try {
     hrrrItems = asItems((await get("gfs_hrrr")).data);
@@ -155,6 +175,26 @@ export async function fetchOpenMeteoBatch(spots: Spot[]): Promise<(WindData | nu
       : null;
     return wind;
   });
+}
+
+// Puerto Rico (and any non-CONUS point): best_match lets Open-Meteo pick the
+// best available model for the location. No high-res-vs-global gap here.
+async function fetchBestMatchBatch(spots: Spot[]): Promise<(WindData | null)[]> {
+  const res = await axios
+    .get("https://api.open-meteo.com/v1/forecast", {
+      params: {
+        ...OM_BASE,
+        latitude:  spots.map((s) => s.lat).join(","),
+        longitude: spots.map((s) => s.lon).join(","),
+      },
+      timeout: 15000,
+    })
+    .catch((err) => {
+      console.error("Open-Meteo best_match batch error:", (err as Error).message);
+      return null;
+    });
+  if (!res) return spots.map(() => null);
+  return asItems(res.data).map((it) => toWind(currentOf(it), "open-meteo"));
 }
 
 function toWind(c: Record<string, number> | null, source: WindData["source"]): WindData | null {

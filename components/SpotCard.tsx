@@ -20,6 +20,7 @@ const REGION_COLORS: Record<string, string> = {
   NC: "#00e5ff",
   NY: "#b6ff4a",
   NJ: "#ff8c42",
+  PR: "#c084fc",
 };
 
 export default function SpotCard({ spot, selected, onClick, verdict, userProfile }: Props) {
