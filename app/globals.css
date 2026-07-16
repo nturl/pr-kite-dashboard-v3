@@ -3,16 +3,17 @@
 @tailwind utilities;
 
 :root {
-  --bg:           #050a14;
-  --bg-2:         #0d1525;
-  --bg-3:         #111c30;
+  /* The Instrument — cold graphite flood, one signal accent */
+  --bg:           #14161a;
+  --bg-2:         #1b1e24;
+  --bg-3:         #22262c;
+  --line:         #2a2e34;
   --border:       rgba(255, 255, 255, 0.08);
-  --cyan:         #00e5ff;
-  --lime:         #b6ff4a;
-  --orange:       #ff8c42;
-  --purple:       #c084fc;
-  --text-primary: rgba(255, 255, 255, 0.92);
-  --text-muted:   rgba(255, 255, 255, 0.3);
+  --amber:        #ffb000; /* signal only: status, GO, live window, best mark */
+  --ink:          #e7e6e2;
+  --mute:         #8b8f96;
+  --text-primary: #e7e6e2;
+  --text-muted:   rgba(139, 143, 150, 0.75);
 }
 
 * {
@@ -28,7 +29,11 @@ body {
   color:      var(--text-primary);
   font-family: "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
+
+/* Tabular figures for every instrument reading */
+.tnum { font-variant-numeric: tabular-nums; }
 
 /* Scrollbar */
 ::-webkit-scrollbar               { width: 4px; height: 4px; }
@@ -38,7 +43,7 @@ body {
 
 /* Spot card hover */
 .spot-card:hover {
-  background: rgba(255,255,255,0.05) !important;
+  background: rgba(255,255,255,0.04) !important;
 }
 
 /* Animations */
@@ -59,12 +64,12 @@ body {
 
 /* Leaflet overrides */
 .leaflet-container {
-  background: #0d1525 !important;
+  background: #1b1e24 !important;
   font-family: "Inter", sans-serif !important;
 }
 
 .leaflet-control-attribution {
-  background: rgba(5,10,20,0.7) !important;
+  background: rgba(20,22,26,0.7) !important;
   color:      rgba(255,255,255,0.25) !important;
   font-size:  9px !important;
 }
@@ -75,11 +80,24 @@ body {
 
 /* Chat input focus */
 input:focus {
-  border-color: rgba(0, 229, 255, 0.35) !important;
-  box-shadow:   0 0 0 2px rgba(0, 229, 255, 0.08) !important;
+  border-color: rgba(255, 176, 0, 0.35) !important;
+  box-shadow:   0 0 0 2px rgba(255, 176, 0, 0.08) !important;
 }
 
 /* Remove number input arrows */
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input[type="number"] { -moz-appearance: textfield; }
+
+/* ── Phone-first: the tool's signature use is a 6am check on a phone, so the
+   desktop two-pane collapses to a single scrolling column below 760px. ── */
+@media (max-width: 760px) {
+  .app-root    { overflow-y: auto !important; height: 100dvh; }
+  .app-body    { flex-direction: column !important; overflow: visible !important; }
+  .app-pane    { width: 100% !important; height: 66vh !important; flex: none !important; order: 1; }
+  .app-sidebar { width: 100% !important; border-right: none !important; border-bottom: 1px solid var(--line) !important; order: 2; }
+  .app-list    { overflow: visible !important; }
+  .app-header  { padding: 0 12px !important; }
+  .app-btn     { padding: 4px 9px !important; font-size: 9px !important; }
+  .hide-mobile { display: none !important; }
+}

@@ -6,15 +6,17 @@ interface Props {
   size?: number;
 }
 
+// Wind ramp for The Instrument: signal amber (#ffb000) marks the rideable
+// range, so colour and the GO lamp tell the same story — amber means fly.
+// Below that reads cool and dead; above it runs hot to red (too much).
 export function getWindColor(kts: number | null): string {
-  if (kts == null) return "#4a5568";
-  if (kts < 8)   return "#4a5568";
-  if (kts < 12)  return "#63b3ed";
-  if (kts < 16)  return "#b6ff4a";
-  if (kts < 20)  return "#00e5ff";
-  if (kts < 25)  return "#ff8c42";
-  if (kts < 30)  return "#fc8181";
-  return "#ff4757";
+  if (kts == null) return "#4a4e55";
+  if (kts < 8)   return "#4a4e55"; // too light — dead grey
+  if (kts < 12)  return "#5f8496"; // light — cool slate
+  if (kts < 16)  return "#c98a2e"; // building / marginal — dim amber
+  if (kts < 24)  return "#ffb000"; // GO — signal amber
+  if (kts < 30)  return "#ff7a3d"; // strong — hot
+  return "#ff4d4d";                // too much — red
 }
 
 export function getWindLabel(kts: number | null): { text: string; emoji: string } {

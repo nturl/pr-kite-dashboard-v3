@@ -279,3 +279,31 @@ export async function getForecast(lat: number, lon: number) {
 
   return { hourly, daily };
 }
+
+// ── Weekly daily-max, many spots per request (the Almanac) ────────────────
+// One batched multi-point call. Uses best_match (not gfs_hrrr): HRRR only
+// forecasts ~48 h, so it can't back a 7-day outlook — best_match lets Open-Meteo
+// pick a model that reaches a week for each point, PR included.
+export async function getDailyMaxBatch(spots: Spot[]): Promise<{ days: string[]; max: (number | null)[][] }> {
+  if (!spots.length) return { days: [], max: [] };
+  const res = await axios.get("https://api.open-meteo.com/v1/forecast", {
+    params: {
+      latitude:  spots.map((s) => s.lat).join(","),
+      longitude: spots.map((s) => s.lon).join(","),
+      daily: "wind_speed_10m_max",
+      wind_speed_unit: "kn",
+      timezone: "America/New_York",
+      forecast_days: 7,
+    },
+    timeout: 20000,
+  });
+  const items = asItems(res.data);
+  let days: string[] = [];
+  const max = spots.map((_, i) => {
+    const dd = items[i]?.daily as Record<string, (number | null)[]> | undefined;
+    if (!dd) return new Array(7).fill(null) as (number | null)[];
+    if (!days.length && Array.isArray(dd.time)) days = dd.time as unknown as string[];
+    return (dd.wind_speed_10m_max ?? []).map((v) => (v != null ? parseFloat((v as number).toFixed(1)) : null));
+  });
+  return { days, max };
+}

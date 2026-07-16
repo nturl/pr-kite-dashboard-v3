@@ -20,15 +20,15 @@ export default function WindArrow({ direction, directionText, size = 60 }: Props
           <g transform={`rotate(${direction}, ${cx}, ${cy})`}>
             {/* Arrow shaft */}
             <line x1={cx} y1={cy + r * 0.7} x2={cx} y2={cy - r * 0.75}
-              stroke="#00e5ff" strokeWidth={2} strokeLinecap="round" />
+              stroke="#c8ccd2" strokeWidth={2} strokeLinecap="round" />
             {/* Arrowhead */}
             <polygon
               points={`${cx},${cy - r * 0.9} ${cx - r * 0.22},${cy - r * 0.45} ${cx + r * 0.22},${cy - r * 0.45}`}
-              fill="#00e5ff"
+              fill="#c8ccd2"
             />
             {/* Tail */}
             <line x1={cx - r * 0.18} y1={cy + r * 0.7} x2={cx + r * 0.18} y2={cy + r * 0.7}
-              stroke="#00e5ff" strokeWidth={2} strokeLinecap="round" opacity={0.6} />
+              stroke="#c8ccd2" strokeWidth={2} strokeLinecap="round" opacity={0.6} />
           </g>
         ) : (
           <text x={cx} y={cy + 4} textAnchor="middle" fill="rgba(255,255,255,0.2)"

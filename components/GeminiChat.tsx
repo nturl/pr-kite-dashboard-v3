@@ -80,9 +80,9 @@ export default function GeminiChat({ spots, userProfile }: Props) {
           width:        52,
           height:       52,
           borderRadius: "50%",
-          background:   open ? "rgba(0,229,255,0.15)" : "rgba(5,10,20,0.95)",
-          border:       "1.5px solid rgba(0,229,255,0.4)",
-          boxShadow:    "0 4px 24px rgba(0,229,255,0.2), 0 0 0 4px rgba(0,229,255,0.06)",
+          background:   open ? "rgba(255,176,0,0.15)" : "rgba(20,22,26,0.96)",
+          border:       "1.5px solid rgba(255,176,0,0.4)",
+          boxShadow:    "0 4px 24px rgba(255,176,0,0.2), 0 0 0 4px rgba(255,176,0,0.06)",
           cursor:       "pointer",
           display:      "flex",
           alignItems:   "center",
@@ -104,10 +104,10 @@ export default function GeminiChat({ spots, userProfile }: Props) {
           right:        24,
           width:        360,
           height:       480,
-          background:   "rgba(5,10,20,0.97)",
-          border:       "1px solid rgba(0,229,255,0.2)",
+          background:   "rgba(20,22,26,0.97)",
+          border:       "1px solid rgba(255,176,0,0.2)",
           borderRadius: 18,
-          boxShadow:    "0 16px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,229,255,0.08)",
+          boxShadow:    "0 16px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,176,0,0.08)",
           backdropFilter: "blur(24px)",
           zIndex:       1999,
           display:      "flex",
@@ -126,8 +126,8 @@ export default function GeminiChat({ spots, userProfile }: Props) {
           }}>
             <div style={{
               width: 28, height: 28, borderRadius: "50%",
-              background: "rgba(0,229,255,0.1)",
-              border: "1px solid rgba(0,229,255,0.3)",
+              background: "rgba(255,176,0,0.1)",
+              border: "1px solid rgba(255,176,0,0.3)",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 14,
             }}>✦</div>
@@ -135,7 +135,7 @@ export default function GeminiChat({ spots, userProfile }: Props) {
               <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: "#fff" }}>
                 Ask Gemini
               </div>
-              <div style={{ fontSize: 10, color: "rgba(0,229,255,0.5)", letterSpacing: "0.08em" }}>
+              <div style={{ fontSize: 10, color: "rgba(255,176,0,0.5)", letterSpacing: "0.08em" }}>
                 {hasKey === false ? "⚠ API key needed" : "conditions loaded"}
               </div>
             </div>
@@ -156,8 +156,8 @@ export default function GeminiChat({ spots, userProfile }: Props) {
                 </div>
                 {SUGGESTIONS.map((s) => (
                   <button key={s} onClick={() => send(s)} style={{
-                    background:   "rgba(0,229,255,0.05)",
-                    border:       "1px solid rgba(0,229,255,0.15)",
+                    background:   "rgba(255,176,0,0.05)",
+                    border:       "1px solid rgba(255,176,0,0.15)",
                     borderRadius: 10,
                     padding:      "8px 12px",
                     fontSize:     12,
@@ -178,13 +178,13 @@ export default function GeminiChat({ spots, userProfile }: Props) {
                 maxWidth:     "88%",
               }}>
                 {m.role === "model" && (
-                  <div style={{ fontSize: 9, color: "rgba(0,229,255,0.4)", marginBottom: 3, letterSpacing: "0.08em", fontWeight: 600 }}>
+                  <div style={{ fontSize: 9, color: "rgba(255,176,0,0.4)", marginBottom: 3, letterSpacing: "0.08em", fontWeight: 600 }}>
                     ✦ GEMINI
                   </div>
                 )}
                 <div style={{
-                  background:   m.role === "user" ? "rgba(0,229,255,0.12)" : "rgba(255,255,255,0.05)",
-                  border:       `1px solid ${m.role === "user" ? "rgba(0,229,255,0.25)" : "rgba(255,255,255,0.08)"}`,
+                  background:   m.role === "user" ? "rgba(255,176,0,0.12)" : "rgba(255,255,255,0.05)",
+                  border:       `1px solid ${m.role === "user" ? "rgba(255,176,0,0.25)" : "rgba(255,255,255,0.08)"}`,
                   borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "4px 16px 16px 16px",
                   padding:      "9px 12px",
                   fontSize:     12,
@@ -199,9 +199,9 @@ export default function GeminiChat({ spots, userProfile }: Props) {
 
             {loading && (
               <div style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#00e5ff", animation: "pulse 1s infinite" }} />
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#00e5ff", animation: "pulse 1s infinite 0.2s" }} />
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#00e5ff", animation: "pulse 1s infinite 0.4s" }} />
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#ffb000", animation: "pulse 1s infinite" }} />
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#ffb000", animation: "pulse 1s infinite 0.2s" }} />
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#ffb000", animation: "pulse 1s infinite 0.4s" }} />
               </div>
             )}
             <div ref={bottomRef} />
@@ -238,11 +238,11 @@ export default function GeminiChat({ spots, userProfile }: Props) {
               onClick={() => send(input)}
               disabled={!input.trim() || loading}
               style={{
-                background:   input.trim() ? "rgba(0,229,255,0.15)" : "rgba(255,255,255,0.04)",
-                border:       `1px solid ${input.trim() ? "rgba(0,229,255,0.35)" : "rgba(255,255,255,0.1)"}`,
+                background:   input.trim() ? "rgba(255,176,0,0.15)" : "rgba(255,255,255,0.04)",
+                border:       `1px solid ${input.trim() ? "rgba(255,176,0,0.35)" : "rgba(255,255,255,0.1)"}`,
                 borderRadius: 10,
                 padding:      "8px 12px",
-                color:        input.trim() ? "#00e5ff" : "rgba(255,255,255,0.2)",
+                color:        input.trim() ? "#ffb000" : "rgba(255,255,255,0.2)",
                 fontSize:     14,
                 cursor:       input.trim() ? "pointer" : "default",
                 transition:   "all 0.15s",

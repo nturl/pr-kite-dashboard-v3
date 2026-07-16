@@ -50,13 +50,13 @@ export default function KiteMap({ spots, selectedId, onSpotSelect, region }: Pro
         const icon = L.divIcon({
           className: "",
           html: `<div style="
-            background: ${isSelected ? color : "rgba(5,10,20,0.9)"};
+            background: ${isSelected ? color : "rgba(20,22,26,0.92)"};
             border: 2px solid ${color};
             border-radius: ${spot.type === "buoy" ? "50%" : "8px"};
             padding: 3px 7px;
             font-size: 11px;
             font-weight: 700;
-            color: ${isSelected ? "#050a14" : color};
+            color: ${isSelected ? "#14161a" : color};
             white-space: nowrap;
             font-family: 'JetBrains Mono', monospace;
             box-shadow: 0 0 10px ${color}55;
@@ -128,13 +128,13 @@ export default function KiteMap({ spots, selectedId, onSpotSelect, region }: Pro
         const icon = L.divIcon({
           className: "",
           html: `<div style="
-            background: ${isSelected ? color : "rgba(5,10,20,0.9)"};
+            background: ${isSelected ? color : "rgba(20,22,26,0.92)"};
             border: 2px solid ${color};
             border-radius: ${spot.type === "buoy" ? "50%" : "8px"};
             padding: 3px 7px;
             font-size: 11px;
             font-weight: 700;
-            color: ${isSelected ? "#050a14" : color};
+            color: ${isSelected ? "#14161a" : color};
             white-space: nowrap;
             font-family: 'JetBrains Mono', monospace;
             box-shadow: 0 0 ${isSelected ? "16px" : "10px"} ${color}${isSelected ? "88" : "55"};
@@ -166,11 +166,11 @@ export default function KiteMap({ spots, selectedId, onSpotSelect, region }: Pro
   }, [region]);
 
   return (
-    <div ref={mapRef} style={{ position: "absolute", inset: 0, background: "#0d1525" }}>
+    <div ref={mapRef} style={{ position: "absolute", inset: 0, background: "#1b1e24" }}>
       <style>{`
         .kite-tooltip {
-          background: rgba(5,10,20,0.95) !important;
-          border: 1px solid rgba(0,229,255,0.3) !important;
+          background: rgba(20,22,26,0.95) !important;
+          border: 1px solid rgba(255,255,255,0.12) !important;
           color: #fff !important;
           font-size: 12px !important;
           border-radius: 8px !important;
@@ -178,7 +178,7 @@ export default function KiteMap({ spots, selectedId, onSpotSelect, region }: Pro
         }
         .kite-tooltip::before { display: none !important; }
         .leaflet-control-zoom a {
-          background: rgba(5,10,20,0.9) !important;
+          background: rgba(20,22,26,0.92) !important;
           color: rgba(255,255,255,0.7) !important;
           border-color: rgba(255,255,255,0.1) !important;
         }

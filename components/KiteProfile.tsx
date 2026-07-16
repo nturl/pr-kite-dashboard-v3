@@ -50,12 +50,12 @@ export default function KiteProfile({ onSave, onClose, existing }: Props) {
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background:   "rgba(13,21,37,0.98)",
-          border:       "1px solid rgba(182,255,74,0.2)",
+          background:   "rgba(27,30,36,0.98)",
+          border:       "1px solid rgba(255,176,0,0.2)",
           borderRadius: 20,
           padding:      "28px 32px",
           width:        360,
-          boxShadow:    "0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(182,255,74,0.08)",
+          boxShadow:    "0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,176,0,0.08)",
         }}
       >
         <div style={{ marginBottom: 24 }}>
@@ -94,8 +94,8 @@ export default function KiteProfile({ onSave, onClose, existing }: Props) {
               {(["cm", "ft"] as const).map((u) => (
                 <button key={u} onClick={() => setHeightUnit(u)} style={{
                   padding:    "0 14px",
-                  background: heightUnit === u ? "rgba(182,255,74,0.15)" : "rgba(255,255,255,0.04)",
-                  color:      heightUnit === u ? "#b6ff4a" : "rgba(255,255,255,0.35)",
+                  background: heightUnit === u ? "rgba(255,176,0,0.15)" : "rgba(255,255,255,0.04)",
+                  color:      heightUnit === u ? "#ffb000" : "rgba(255,255,255,0.35)",
                   border:     "none",
                   cursor:     "pointer",
                   fontSize:   12,
@@ -135,8 +135,8 @@ export default function KiteProfile({ onSave, onClose, existing }: Props) {
               {(["kg", "lbs"] as const).map((u) => (
                 <button key={u} onClick={() => setWeightUnit(u)} style={{
                   padding:    "0 14px",
-                  background: weightUnit === u ? "rgba(182,255,74,0.15)" : "rgba(255,255,255,0.04)",
-                  color:      weightUnit === u ? "#b6ff4a" : "rgba(255,255,255,0.35)",
+                  background: weightUnit === u ? "rgba(255,176,0,0.15)" : "rgba(255,255,255,0.04)",
+                  color:      weightUnit === u ? "#ffb000" : "rgba(255,255,255,0.35)",
                   border:     "none",
                   cursor:     "pointer",
                   fontSize:   12,
@@ -165,10 +165,10 @@ export default function KiteProfile({ onSave, onClose, existing }: Props) {
           <button onClick={handleSave} disabled={!valid} style={{
             flex:         2,
             padding:      "12px 0",
-            background:   valid ? "rgba(182,255,74,0.12)" : "rgba(255,255,255,0.04)",
-            border:       `1px solid ${valid ? "rgba(182,255,74,0.35)" : "rgba(255,255,255,0.1)"}`,
+            background:   valid ? "rgba(255,176,0,0.12)" : "rgba(255,255,255,0.04)",
+            border:       `1px solid ${valid ? "rgba(255,176,0,0.35)" : "rgba(255,255,255,0.1)"}`,
             borderRadius: 12,
-            color:        valid ? "#b6ff4a" : "rgba(255,255,255,0.2)",
+            color:        valid ? "#ffb000" : "rgba(255,255,255,0.2)",
             fontSize:     13,
             fontWeight:   700,
             cursor:       valid ? "pointer" : "default",
