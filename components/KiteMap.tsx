@@ -4,6 +4,38 @@ import { useEffect, useRef } from "react";
 import { SpotWithWind } from "@/lib/spots";
 import { getWindColor } from "./WindGauge";
 
+// Instrument-palette ramp for the animated wind field: muted grey in calm air,
+// warming to the app's amber (#ffb000) as wind reaches kite strength, so the
+// map's single accent keeps its meaning (amber = wind worth chasing).
+const WIND_COLORS = [
+  "rgb(140,144,150)", // ~0 kt   muted grey
+  "rgb(168,170,168)",
+  "rgb(196,192,178)", // light   pale ink
+  "rgb(220,196,132)",
+  "rgb(240,186,74)",
+  "rgb(255,176,0)",   // strong  amber
+];
+
+// leaflet-velocity's dist is a bare-global script (it does `L.velocityLayer = …`
+// against a global `L`), which webpack's module scoping won't wire up via
+// import(). Load it as a real <script> so it extends the same global L we set.
+// Vendored to /public so it ships as a static asset. One shared promise keeps it
+// to a single injection across mounts (incl. React StrictMode double-mount).
+let velocityPluginPromise: Promise<void> | null = null;
+function loadVelocityPlugin(L: { velocityLayer?: unknown }): Promise<void> {
+  if (L.velocityLayer) return Promise.resolve();
+  if (velocityPluginPromise) return velocityPluginPromise;
+  velocityPluginPromise = new Promise<void>((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "/vendor/leaflet-velocity.min.js";
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => { velocityPluginPromise = null; reject(new Error("leaflet-velocity failed to load")); };
+    document.head.appendChild(s);
+  });
+  return velocityPluginPromise;
+}
+
 interface Props {
   spots:          SpotWithWind[];
   selectedId:     string | null;
@@ -16,6 +48,7 @@ export default function KiteMap({ spots, selectedId, onSpotSelect, region }: Pro
   const mapInstanceRef = useRef<unknown>(null);
   const markersRef   = useRef<Map<string, unknown>>(new Map());
   const resizeObsRef = useRef<ResizeObserver | null>(null);
+  const velocityRef  = useRef<unknown>(null);
 
   useEffect(() => {
     if (typeof window === "undefined" || !mapRef.current || mapInstanceRef.current) return;
@@ -101,6 +134,84 @@ export default function KiteMap({ spots, selectedId, onSpotSelect, region }: Pro
       });
       ro.observe(mapRef.current!);
       resizeObsRef.current = ro;
+
+      // ── Animated wind-flow layer (Windy-style, Instrument palette) ──────────
+      // A field of drifting particles advected by the coarse u/v grid served at
+      // /api/windfield. Pale in calm air, warming to amber at kite strength.
+      // Toggleable via the WIND control; off by default under reduced-motion.
+      const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      let velocityLayer: { addTo: (m: unknown) => void } | null = null;
+      let windData: unknown = null;
+      let windOn = !prefersReduced;
+      let toggleBtn: HTMLButtonElement | null = null;
+      const syncBtn = () => toggleBtn?.setAttribute("aria-pressed", String(windOn && !!velocityLayer && (map as L.Map).hasLayer(velocityLayer as unknown as L.Layer)));
+
+      const enableWind = async () => {
+        if (mapInstanceRef.current !== map) return;
+        if (!velocityLayer) {
+          try {
+            (window as unknown as { L: unknown }).L = L; // the plugin script reads a global L
+            await loadVelocityPlugin(L as { velocityLayer?: unknown });
+            if (!windData) {
+              const res = await fetch("/api/windfield");
+              if (!res.ok) return;
+              const parsed = await res.json();
+              if (!Array.isArray(parsed)) return;
+              windData = parsed;
+            }
+            if (mapInstanceRef.current !== map) return; // unmounted mid-fetch
+            velocityLayer = (L as unknown as { velocityLayer: (o: unknown) => typeof velocityLayer }).velocityLayer({
+              data:               windData,
+              displayValues:      false,
+              colorScale:         WIND_COLORS,
+              minVelocity:        0,
+              maxVelocity:        26,      // kt — amber saturates approaching strong wind
+              velocityScale:      0.011,   // particle travel speed
+              particleAge:        70,
+              particleMultiplier: 1 / 260, // density
+              lineWidth:          1.1,
+              frameRate:          22,
+              opacity:            0.92,
+            });
+          } catch (e) {
+            console.error("wind layer init failed:", (e as Error).message);
+            return;
+          }
+        }
+        if (mapInstanceRef.current !== map || !velocityLayer) return;
+        velocityLayer.addTo(map);
+        velocityRef.current = velocityLayer;
+        syncBtn();
+      };
+
+      const disableWind = () => {
+        if (velocityLayer) (map as L.Map).removeLayer(velocityLayer as unknown as L.Layer);
+        syncBtn();
+      };
+
+      const WindToggle = (L.Control as unknown as { extend: (o: unknown) => new (o: unknown) => L.Control }).extend({
+        onAdd: function () {
+          const btn = L.DomUtil.create("button", "wind-toggle") as HTMLButtonElement;
+          btn.type = "button";
+          btn.innerHTML = `<span class="wind-dot"></span>WIND`;
+          btn.title = "Toggle animated wind flow";
+          btn.setAttribute("aria-pressed", "false");
+          L.DomEvent.disableClickPropagation(btn);
+          L.DomEvent.on(btn, "click", () => {
+            windOn = !windOn;
+            if (windOn) enableWind(); else disableWind();
+          });
+          toggleBtn = btn;
+          return btn;
+        },
+      });
+      map.addControl(new WindToggle({ position: "bottomleft" }));
+
+      // Enable straight away when not reduced-motion. enableWind's own async
+      // work (script load + windfield fetch) lets the map reach its settled size
+      // before the layer is added; leaflet-velocity then restarts cleanly on the
+      // fit's move/zoom events.
+      if (windOn) enableWind();
     });
 
     return () => {
@@ -181,6 +292,28 @@ export default function KiteMap({ spots, selectedId, onSpotSelect, region }: Pro
           background: rgba(20,22,26,0.92) !important;
           color: rgba(255,255,255,0.7) !important;
           border-color: rgba(255,255,255,0.1) !important;
+        }
+        .wind-toggle {
+          display: flex; align-items: center; gap: 6px;
+          background: rgba(20,22,26,0.92);
+          border: 1px solid rgba(255,255,255,0.1);
+          color: rgba(255,255,255,0.62);
+          font: 700 9px/1 'JetBrains Mono', monospace;
+          letter-spacing: 0.14em;
+          padding: 7px 10px;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: color 0.15s, border-color 0.15s;
+        }
+        .wind-toggle .wind-dot {
+          width: 5px; height: 5px; border-radius: 50%;
+          background: #3a3e44; transition: background 0.15s, box-shadow 0.15s;
+        }
+        .wind-toggle[aria-pressed="true"] {
+          color: #ffb000; border-color: rgba(255,176,0,0.4);
+        }
+        .wind-toggle[aria-pressed="true"] .wind-dot {
+          background: #ffb000; box-shadow: 0 0 6px #ffb000;
         }
       `}</style>
     </div>
