@@ -62,6 +62,35 @@ body {
   to   { opacity: 1; }
 }
 
+/* ── Live wind ticker (QuickBar) — a calm, seamless left-crawl of every live
+   reading. Track holds two copies; translating -50% wraps one copy-width for a
+   seam-free loop. Pauses on hover to read a spot; falls back to manual scroll
+   when the viewer prefers reduced motion. ── */
+@keyframes windTicker {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+.wind-ticker-viewport {
+  position: relative;
+  flex:     1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 28px, #000 calc(100% - 44px), transparent 100%);
+          mask-image: linear-gradient(to right, transparent 0, #000 28px, #000 calc(100% - 44px), transparent 100%);
+}
+.wind-ticker-track {
+  display:     inline-flex;
+  align-items: center;
+  width:       max-content;
+  animation:   windTicker 60s linear infinite; /* duration overridden inline, scaled to reading count */
+  will-change: transform;
+}
+.wind-ticker:hover .wind-ticker-track { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .wind-ticker-track    { animation: none; }
+  .wind-ticker-viewport { overflow-x: auto; }
+}
+
 /* Leaflet overrides */
 .leaflet-container {
   background: #1b1e24 !important;

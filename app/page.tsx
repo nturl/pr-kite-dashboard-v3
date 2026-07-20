@@ -130,47 +130,66 @@ function Header({
   );
 }
 
-// ── Quick bar ─────────────────────────────────────────────────────────────
+// ── Quick bar (live wind ticker) ──────────────────────────────────────────
+// A seamless auto-sliding marquee of every live reading. The track carries two
+// copies of the list and crawls left; CSS wraps it (-50%) for a seam-free loop.
 function QuickBar({ spots }: { spots: SpotWithWind[] }) {
   const live = spots.filter((s) => s.wind?.avg != null);
   if (!live.length) return null;
+
+  // ~4.2s of travel per reading keeps the crawl calm and legible at any count.
+  const duration = Math.max(24, Math.round(live.length * 4.2));
+
+  const reading = (spot: SpotWithWind, copy: number) => (
+    <div key={`${copy}-${spot.id}`} style={{
+      display:     "flex",
+      alignItems:  "center",
+      gap:         6,
+      padding:     "0 12px",
+      borderLeft:  `1px solid ${C.line}`,
+      whiteSpace:  "nowrap",
+    }}>
+      <div style={{
+        width: 4, height: 4, borderRadius: "50%",
+        background: getWindColor(spot.wind!.avg),
+      }} />
+      <span style={{ fontSize: 10, color: C.mute }}>{spot.name}</span>
+      <span className="tnum" style={{ fontSize: 11, fontWeight: 700, color: getWindColor(spot.wind!.avg), fontFamily: MONO }}>
+        {Math.round(spot.wind!.avg!)} kt
+      </span>
+      {spot.wind?.directionText && (
+        <span style={{ fontSize: 9, color: C.mute, fontFamily: MONO }}>{spot.wind.directionText}</span>
+      )}
+    </div>
+  );
+
   return (
-    <div style={{
+    <div className="wind-ticker" style={{
       display:        "flex",
       alignItems:     "center",
-      gap:            0,
-      padding:        "0 20px",
+      padding:        "0 0 0 20px",
       height:         34,
       borderBottom:   `1px solid ${C.line}`,
       background:     "rgba(27,30,36,0.4)",
-      overflowX:      "auto",
+      overflow:       "hidden",
       flexShrink:     0,
     }}>
-      <span style={{ fontSize: 8, color: C.mute, letterSpacing: "0.16em", marginRight: 16, whiteSpace: "nowrap", fontFamily: MONO }}>
+      {/* Pinned live tag — sits above the crawl; readings emerge from behind it */}
+      <span style={{
+        display: "flex", alignItems: "center", gap: 6, flexShrink: 0, zIndex: 1,
+        fontSize: 8, color: C.mute, letterSpacing: "0.16em",
+        marginRight: 14, whiteSpace: "nowrap", fontFamily: MONO,
+      }}>
+        <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.amber, animation: "pulse 2s ease-in-out infinite" }} />
         QUICK LOOK
       </span>
-      {live.map((spot, i) => (
-        <div key={spot.id} style={{
-          display:     "flex",
-          alignItems:  "center",
-          gap:         6,
-          padding:     "0 12px",
-          borderLeft:  i > 0 ? `1px solid ${C.line}` : "none",
-          whiteSpace:  "nowrap",
-        }}>
-          <div style={{
-            width: 4, height: 4, borderRadius: "50%",
-            background: getWindColor(spot.wind!.avg),
-          }} />
-          <span style={{ fontSize: 10, color: C.mute }}>{spot.name}</span>
-          <span className="tnum" style={{ fontSize: 11, fontWeight: 700, color: getWindColor(spot.wind!.avg), fontFamily: MONO }}>
-            {Math.round(spot.wind!.avg!)} kt
-          </span>
-          {spot.wind?.directionText && (
-            <span style={{ fontSize: 9, color: C.mute, fontFamily: MONO }}>{spot.wind.directionText}</span>
-          )}
+
+      <div className="wind-ticker-viewport">
+        <div className="wind-ticker-track" style={{ animationDuration: `${duration}s` }}>
+          {live.map((s) => reading(s, 0))}
+          {live.map((s) => reading(s, 1))}
         </div>
-      ))}
+      </div>
     </div>
   );
 }
