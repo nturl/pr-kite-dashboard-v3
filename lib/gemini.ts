@@ -7,6 +7,12 @@ function getClient() {
   return new GoogleGenerativeAI(key);
 }
 
+// Gemini often wraps its "JSON only" replies in markdown code fences anyway.
+function parseGeminiJson<T>(raw: string): T {
+  const json = raw.trim().replace(/^```json?\n?/, "").replace(/```$/, "").trim();
+  return JSON.parse(json) as T;
+}
+
 // ── Wind condition label helpers ─────────────────────────────────────────
 export function windLabel(kts: number | null): string {
   if (kts == null) return "No data";
@@ -46,7 +52,7 @@ export async function analyzeConditions(spots: SpotWithWind[]): Promise<SpotVerd
     direction: s.wind?.directionText,
   }));
 
-  const prompt = `You are an expert kitesurfing coach analyzing wind across Noel's kite spots in North Carolina, New York, and New Jersey. These are US East Coast beach and bay spots where hot summer afternoons often fire a thermal sea breeze — onshore wind that coarse global forecast models routinely under-call.
+  const prompt = `You are an expert kitesurfing coach analyzing wind across Noel's kite spots in North Carolina, New York, New Jersey, and Puerto Rico. The mainland spots are US East Coast beach and bay spots where hot summer afternoons often fire a thermal sea breeze — onshore wind that coarse global forecast models routinely under-call; the Puerto Rico spots ride steady easterly trade winds.
 
 Here are the current live wind readings (all in knots):
 ${JSON.stringify(spotSummary, null, 2)}
@@ -71,11 +77,7 @@ Rules:
 - Return ONLY the JSON array, no markdown, no extra text.`;
 
   const result = await model.generateContent(prompt);
-  const text   = result.response.text().trim();
-
-  // Strip markdown code fences if model adds them
-  const json = text.replace(/^```json?\n?/, "").replace(/```$/, "").trim();
-  return JSON.parse(json) as SpotVerdict[];
+  return parseGeminiJson<SpotVerdict[]>(result.response.text());
 }
 
 // ── Regional summary ─────────────────────────────────────────────────────
@@ -118,9 +120,7 @@ Return a JSON array:
 Return ONLY the JSON array.`;
 
   const result = await model.generateContent(prompt);
-  const text   = result.response.text().trim();
-  const json   = text.replace(/^```json?\n?/, "").replace(/```$/, "").trim();
-  return JSON.parse(json) as RegionalSummary[];
+  return parseGeminiJson<RegionalSummary[]>(result.response.text());
 }
 
 // ── Natural language chat ────────────────────────────────────────────────
@@ -214,7 +214,5 @@ Return JSON only:
 }`;
 
   const result = await model.generateContent(prompt);
-  const text   = result.response.text().trim();
-  const json   = text.replace(/^```json?\n?/, "").replace(/```$/, "").trim();
-  return JSON.parse(json) as KiteRecommendation;
+  return parseGeminiJson<KiteRecommendation>(result.response.text());
 }

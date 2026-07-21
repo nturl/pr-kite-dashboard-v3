@@ -161,21 +161,25 @@ async function fetchHrrrWithGap(spots: Spot[]): Promise<(WindData | null)[]> {
       timeout: 15000,
     });
 
+  // The two model calls are independent — run them concurrently instead of
+  // paying two sequential round-trips on every /api/spots cache miss.
+  const [hrrrRes, ecmwfRes] = await Promise.allSettled([get("gfs_hrrr"), get("ecmwf_ifs025")]);
+
   let hrrrItems: Record<string, unknown>[];
-  try {
-    hrrrItems = asItems((await get("gfs_hrrr")).data);
-  } catch (err) {
-    console.error("Open-Meteo HRRR batch error, falling back to best_match:", (err as Error).message);
+  if (hrrrRes.status === "fulfilled") {
+    hrrrItems = asItems(hrrrRes.value.data);
+  } else {
+    console.error("Open-Meteo HRRR batch error, falling back to best_match:", (hrrrRes.reason as Error).message);
     const bm = asItems((await get()).data);
     return spots.map((_, i) => toWind(currentOf(bm[i]), "open-meteo"));
   }
 
   // Global model is best-effort — its only job is the gap annotation.
   let ecmwfItems: Record<string, unknown>[] = [];
-  try {
-    ecmwfItems = asItems((await get("ecmwf_ifs025")).data);
-  } catch (err) {
-    console.error("Open-Meteo ECMWF batch error (gap unavailable):", (err as Error).message);
+  if (ecmwfRes.status === "fulfilled") {
+    ecmwfItems = asItems(ecmwfRes.value.data);
+  } else {
+    console.error("Open-Meteo ECMWF batch error (gap unavailable):", (ecmwfRes.reason as Error).message);
   }
 
   return spots.map((_, i) => {
@@ -243,7 +247,25 @@ export async function fetchSpot(spot: Spot): Promise<SpotWithWind> {
 }
 
 // ── Forecast (hourly + daily) ────────────────────────────────────────────
-export async function getForecast(lat: number, lon: number) {
+// One upstream call returns BOTH hourly and daily, but the two forecast routes
+// each call this and discard half — so expanding a spot card fetched the same
+// data twice. Cache the promise per coordinate so concurrent hourly/daily
+// requests share a single Open-Meteo call. Failed calls are evicted so an
+// upstream blip isn't cached for the full TTL.
+const FORECAST_TTL = 30 * 60 * 1000; // matches the shorter (hourly) route cache
+const forecastCache = new Map<string, { ts: number; promise: ReturnType<typeof fetchForecast> }>();
+
+export function getForecast(lat: number, lon: number) {
+  const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+  const hit = forecastCache.get(key);
+  if (hit && Date.now() - hit.ts < FORECAST_TTL) return hit.promise;
+  const promise = fetchForecast(lat, lon);
+  forecastCache.set(key, { ts: Date.now(), promise });
+  promise.catch(() => forecastCache.delete(key));
+  return promise;
+}
+
+async function fetchForecast(lat: number, lon: number) {
   const res = await axios.get("https://api.open-meteo.com/v1/forecast", {
     params: {
       latitude: lat, longitude: lon,

@@ -31,17 +31,17 @@ export async function GET() {
   const stationSpots = SPOTS.filter((s) => s.noaa || s.buoy);
   const omSpots      = SPOTS.filter((s) => !s.noaa && !s.buoy);
 
-  const stationResults = await Promise.all(stationSpots.map(fetchSpot));
-
-  let omResults: Array<typeof omSpots[0] & { wind: unknown }> = omSpots.map((s) => ({ ...s, wind: null }));
-  if (omSpots.length > 0) {
-    try {
-      const winds = await fetchOpenMeteoBatch(omSpots);
-      omResults   = omSpots.map((s, i) => ({ ...s, wind: winds[i] ?? null }));
-    } catch (err) {
+  // Station fetches and the Open-Meteo model batch are independent — run them
+  // concurrently. fetchSpot never rejects (it catches internally); the batch
+  // falls back to nulls so one upstream outage can't sink the whole response.
+  const [stationResults, omWinds] = await Promise.all([
+    Promise.all(stationSpots.map(fetchSpot)),
+    fetchOpenMeteoBatch(omSpots).catch((err) => {
       console.error("Open-Meteo batch error:", (err as Error).message);
-    }
-  }
+      return omSpots.map(() => null);
+    }),
+  ]);
+  const omResults = omSpots.map((s, i) => ({ ...s, wind: omWinds[i] ?? null }));
 
   const byId  = new Map([...stationResults, ...omResults].map((r) => [r.id, r]));
   const results = SPOTS.map((s) => byId.get(s.id) ?? { ...s, wind: null });
