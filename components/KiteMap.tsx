@@ -136,30 +136,63 @@ export default function KiteMap({ spots, selectedId, onSpotSelect, region }: Pro
       resizeObsRef.current = ro;
 
       // ── Animated wind-flow layer (Windy-style, Instrument palette) ──────────
-      // A field of drifting particles advected by the coarse u/v grid served at
+      // A field of drifting particles advected by the u/v grid served at
       // /api/windfield. Pale in calm air, warming to amber at kite strength.
       // Toggleable via the WIND control; off by default under reduced-motion.
+      //
+      // Windy-style coverage: two fields, swapped by viewport. When the view sits
+      // inside the fine regional grid we use it; zoom or pan beyond and the layer
+      // swaps to a coarse whole-earth grid so particles cover every visible pixel
+      // instead of rendering a hard-edged data box.
       const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      let velocityLayer: { addTo: (m: unknown) => void } | null = null;
-      let windData: unknown = null;
+      type WindScope = "region" | "global";
+      // Must stay in sync with GRIDS.region in app/api/windfield/route.ts.
+      const REGION_BOX = { latN: 46, latS: 10, lonW: -92, lonE: -55 };
+      let velocityLayer: { addTo: (m: unknown) => void; setData: (d: unknown) => void } | null = null;
+      const windFields: Partial<Record<WindScope, unknown>> = {};
+      let windScope: WindScope | null = null; // scope the layer currently renders
       let windOn = !prefersReduced;
+
+      const pickScope = (): WindScope => {
+        const b = (map as L.Map).getBounds();
+        const inside =
+          b.getNorth() <= REGION_BOX.latN && b.getSouth() >= REGION_BOX.latS &&
+          b.getWest()  >= REGION_BOX.lonW && b.getEast()  <= REGION_BOX.lonE;
+        return inside ? "region" : "global";
+      };
+
+      const fetchField = async (scope: WindScope): Promise<unknown> => {
+        if (windFields[scope]) return windFields[scope];
+        const res = await fetch(`/api/windfield?scope=${scope}`);
+        if (!res.ok) return null;
+        const parsed = await res.json();
+        if (!Array.isArray(parsed)) return null;
+        windFields[scope] = parsed;
+        return parsed;
+      };
       let toggleBtn: HTMLButtonElement | null = null;
       const syncBtn = () => toggleBtn?.setAttribute("aria-pressed", String(windOn && !!velocityLayer && (map as L.Map).hasLayer(velocityLayer as unknown as L.Layer)));
 
+      let windInitBusy = false;
       const enableWind = async () => {
-        if (mapInstanceRef.current !== map) return;
+        if (mapInstanceRef.current !== map || windInitBusy) return;
+        windInitBusy = true;
+        try {
         if (!velocityLayer) {
           try {
             (window as unknown as { L: unknown }).L = L; // the plugin script reads a global L
             await loadVelocityPlugin(L as { velocityLayer?: unknown });
+            let scope = pickScope();
+            let windData = await fetchField(scope);
             if (!windData) {
-              const res = await fetch("/api/windfield");
-              if (!res.ok) return;
-              const parsed = await res.json();
-              if (!Array.isArray(parsed)) return;
-              windData = parsed;
+              // Desired field unavailable (rate limit, outage): fall back to the
+              // other one so the layer still shows something rather than nothing.
+              scope = scope === "global" ? "region" : "global";
+              windData = await fetchField(scope);
             }
+            if (!windData) return;
             if (mapInstanceRef.current !== map) return; // unmounted mid-fetch
+            windScope = scope;
             velocityLayer = (L as unknown as { velocityLayer: (o: unknown) => typeof velocityLayer }).velocityLayer({
               data:               windData,
               displayValues:      false,
@@ -182,6 +215,7 @@ export default function KiteMap({ spots, selectedId, onSpotSelect, region }: Pro
         velocityLayer.addTo(map);
         velocityRef.current = velocityLayer;
         syncBtn();
+        } finally { windInitBusy = false; }
       };
 
       const disableWind = () => {
@@ -206,6 +240,31 @@ export default function KiteMap({ spots, selectedId, onSpotSelect, region }: Pro
         },
       });
       map.addControl(new WindToggle({ position: "bottomleft" }));
+
+      // Swap between the regional and global fields as the viewport moves.
+      // setData clears and restarts the particle animation in place.
+      const syncScope = async () => {
+        if (!windOn || !velocityLayer) return;
+        const want = pickScope();
+        if (want === windScope) return;
+        const data = await fetchField(want);
+        // Re-check after the await: the map may have moved again or unmounted.
+        if (!data || mapInstanceRef.current !== map || !velocityLayer) return;
+        if (pickScope() !== want || want === windScope) return;
+        windScope = want;
+        velocityLayer.setData(data);
+      };
+      map.on("moveend zoomend", syncScope);
+      // The windfield API fills its grids incrementally when Open-Meteo's rate
+      // window is tight — a fetch may 503 several times before the field is
+      // ready. Nudge periodically: finish initial setup if it never got data,
+      // and swap scopes once the right field becomes available (syncScope
+      // no-ops when the rendered scope already matches the viewport).
+      const windHeal = setInterval(() => {
+        if (mapInstanceRef.current !== map) { clearInterval(windHeal); return; }
+        if (windOn && !velocityLayer) { enableWind(); return; }
+        syncScope();
+      }, 120_000);
 
       // Enable straight away when not reduced-motion. enableWind's own async
       // work (script load + windfield fetch) lets the map reach its settled size
