@@ -25,14 +25,14 @@ export default function GeminiChat({ spots, userProfile }: Props) {
   const bottomRef               = useRef<HTMLDivElement>(null);
   const inputRef                = useRef<HTMLInputElement>(null);
 
-  // Check if Gemini is available
+  // Check if Gemini is available — GET just reports key presence; the old POST
+  // "ping" probe burned a real (billed) Gemini generation on every panel open.
   useEffect(() => {
     if (!open || hasKey !== null) return;
-    fetch("/api/ai/chat", {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ messages: [{ role: "user", content: "ping" }], spots: [] }),
-    }).then((r) => setHasKey(r.status !== 503)).catch(() => setHasKey(false));
+    fetch("/api/ai/chat")
+      .then((r) => r.json())
+      .then((d) => setHasKey(!!d.available))
+      .catch(() => setHasKey(false));
   }, [open, hasKey]);
 
   useEffect(() => {
@@ -58,8 +58,12 @@ export default function GeminiChat({ spots, userProfile }: Props) {
         body:    JSON.stringify({ messages: newMessages, spots, userProfile }),
       });
       const data = await res.json();
-      if (data.reply) {
+      if (res.ok && data.reply) {
         setMessages((prev) => [...prev, { role: "model", content: data.reply }]);
+      } else {
+        // fetch doesn't throw on 4xx/5xx — without this branch a Gemini error
+        // left the user's question hanging with no answer and no explanation.
+        setMessages((prev) => [...prev, { role: "model", content: "Sorry, Gemini couldn't answer that one — try again in a moment." }]);
       }
     } catch {
       setMessages((prev) => [...prev, { role: "model", content: "Sorry, I couldn't reach Gemini. Check your API key." }]);

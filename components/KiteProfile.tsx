@@ -16,7 +16,7 @@ interface Props {
 }
 
 export default function KiteProfile({ onSave, onClose, existing }: Props) {
-  const [heightVal, setHeightVal]     = useState(existing ? String(existing.heightUnit === "ft" ? cmToFt(existing.heightCm) : existing.heightCm) : "");
+  const [heightVal, setHeightVal]     = useState(existing ? (existing.heightUnit === "ft" ? cmToFtIn(existing.heightCm) : String(existing.heightCm)) : "");
   const [weightVal, setWeightVal]     = useState(existing ? String(existing.weightUnit === "lbs" ? kgToLbs(existing.weightKg) : existing.weightKg) : "");
   const [heightUnit, setHeightUnit]   = useState<"cm" | "ft">(existing?.heightUnit ?? "cm");
   const [weightUnit, setWeightUnit]   = useState<"kg" | "lbs">(existing?.weightUnit ?? "kg");
@@ -25,10 +25,9 @@ export default function KiteProfile({ onSave, onClose, existing }: Props) {
 
   const handleSave = () => {
     if (!valid) return;
-    const h = Number(heightVal);
     const w = Number(weightVal);
     onSave({
-      heightCm:   heightUnit === "ft" ? ftToCm(h) : h,
+      heightCm:   heightUnit === "ft" ? ftInToCm(heightVal) : Number(heightVal),
       weightKg:   weightUnit === "lbs" ? lbsToKg(w) : w,
       heightUnit,
       weightUnit,
@@ -183,7 +182,19 @@ export default function KiteProfile({ onSave, onClose, existing }: Props) {
 }
 
 // ── Unit helpers ─────────────────────────────────────────────────────────
-function cmToFt(cm: number) { return Math.round(cm / 30.48 * 100) / 100; }
-function ftToCm(ft: number) { return Math.round(ft * 30.48); }
+// Ft-mode height uses feet.inches notation (5.10 = 5 ft 10 in), matching the
+// input placeholder — reading it as decimal feet turned "5.10" into 155 cm
+// (~5'1") and fed that to the kite-size AI. Fractions that can't be inches
+// (e.g. 5.75) fall back to decimal feet.
+function ftInToCm(s: string): number {
+  const [ft, frac] = s.split(".");
+  const inches = frac == null || frac === "" ? 0 : Number(frac);
+  if (frac != null && (inches >= 12 || isNaN(inches))) return Math.round(Number(s) * 30.48);
+  return Math.round((Number(ft) * 12 + inches) * 2.54);
+}
+function cmToFtIn(cm: number): string {
+  const totalIn = Math.round(cm / 2.54);
+  return `${Math.floor(totalIn / 12)}.${totalIn % 12}`;
+}
 function kgToLbs(kg: number) { return Math.round(kg * 2.20462); }
 function lbsToKg(lbs: number) { return Math.round(lbs / 2.20462); }

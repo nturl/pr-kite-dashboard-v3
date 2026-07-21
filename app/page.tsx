@@ -322,7 +322,9 @@ function SkeletonCard() {
   return (
     <div style={{
       background:   "rgba(255,255,255,0.02)",
-      border:       `1px solid ${C.line}`,
+      borderTop:    `1px solid ${C.line}`,
+      borderRight:  `1px solid ${C.line}`,
+      borderBottom: `1px solid ${C.line}`,
       borderLeft:   "3px solid rgba(255,255,255,0.05)",
       borderRadius: 8,
       padding:      "14px 16px",

@@ -77,7 +77,11 @@ export default function SpotCard({ spot, selected, onClick, verdict, userProfile
       className="spot-card"
       style={{
         background:   selected ? "rgba(255,176,0,0.05)" : "rgba(255,255,255,0.025)",
-        border:       `1px solid ${selected ? "rgba(255,176,0,0.35)" : C.line}`,
+        // Longhand borders only — mixing the `border` shorthand with `borderLeft`
+        // makes React's style differ warn and can drop the override on rerender.
+        borderTop:    `1px solid ${selected ? "rgba(255,176,0,0.35)" : C.line}`,
+        borderRight:  `1px solid ${selected ? "rgba(255,176,0,0.35)" : C.line}`,
+        borderBottom: `1px solid ${selected ? "rgba(255,176,0,0.35)" : C.line}`,
         borderLeft:   `3px solid ${avg != null ? color : "rgba(255,255,255,0.1)"}`,
         borderRadius: 8,
         padding:      "14px 16px",
