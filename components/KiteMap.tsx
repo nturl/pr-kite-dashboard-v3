@@ -166,8 +166,8 @@ export default function KiteMap({ spots, selectedId, onSpotSelect, region }: Pro
               colorScale:         WIND_COLORS,
               minVelocity:        0,
               maxVelocity:        26,      // kt — amber saturates approaching strong wind
-              velocityScale:      0.011,   // particle travel speed
-              particleAge:        70,
+              velocityScale:      0.006,   // particle travel speed — drift, not dart (fade is hardcoded in the vendor build, so speed also sets trail length; below ~0.005 streaks collapse into dabs)
+              particleAge:        90,
               particleMultiplier: 1 / 260, // density
               lineWidth:          1.1,
               frameRate:          22,
